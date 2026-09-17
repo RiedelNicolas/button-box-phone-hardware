@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title data-i18n="projectTitle">Telephone Soundboard</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <!-- Blueprint Technical Grid Layer -->
+  <div class="blueprint-grid-bg"></div>
+
+  <!-- CAD Header / Title Block -->
+  <header class="blueprint-header">
+    <div class="brand-section">
+      <div class="brand-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+        </svg>
+      </div>
+      <div class="brand-title-group">
+        <h1>
+          <span data-i18n="projectTitle">Telephone Soundboard</span>
+          <span class="cad-badge" data-i18n="projectBadge">BLUEPRINT V1.0</span>
+        </h1>
+        <p data-i18n="projectSub">REV 1.0 • AUTONOMOUS HARDWARE SCHEMATIC • 0µA PHYSICAL POWER CUTOFF</p>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <!-- Language Selector Switcher -->
+      <div class="lang-selector-group">
+        <button class="lang-btn" data-lang="es">ES</button>
+        <button class="lang-btn active" data-lang="en">EN</button>
+      </div>
+
+      <!-- Power Status Indicator Badge -->
+      <div id="power-status-badge" class="status-badge standby">
+        <span class="dot standby"></span> <span id="power-status-text" data-i18n="statusStandby">0 µA COMPLETE CUT-OFF (HUNG UP)</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Blueprint Layout -->
+  <main class="blueprint-layout">
+    
+    <!-- 3D Interactive Viewport -->
+    <div class="viewport-wrapper">
+      <!-- Three.js Canvas Container -->
+      <div id="viewport-container"></div>
+
+      <!-- Floating View Switcher Bar -->
+      <div class="viewport-header-bar">
+        <button class="view-tab-btn active" data-view="phone">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+          <span data-i18n="viewPhone">Complete Phone</span>
+        </button>
+        <button class="view-tab-btn" data-view="breadboard">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="2" ry="2"/><path d="M6 6h.01M10 6h.01M14 6h.01M18 6h.01M6 10h.01M18 10h.01M6 14h.01M18 14h.01M6 18h.01M10 18h.01M14 18h.01M18 18h.01"/></svg>
+          <span data-i18n="viewBreadboard">Breadboard PoC</span>
+        </button>
+        <button class="view-tab-btn" data-view="modding">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 4.24 4.24"/><path d="m14.83 9.17 4.24-4.24"/><path d="m14.83 14.83 4.24 4.24"/><path d="m9.17 14.83-4.24 4.24"/></svg>
+          <span data-i18n="viewModding">Internal Modding & Schematic</span>
+        </button>
+      </div>
+
+      <!-- Context Info Pill -->
+      <div id="view-context-info" class="context-info-pill">
+        <!-- populated dynamically by i18n -->
+      </div>
+
+      <!-- Floating Controls Toolbar -->
+      <div class="viewport-floating-toolbar">
+        <button id="btn-toggle-handset" class="btn-pill primary">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+          <span id="btn-toggle-handset-text" data-i18n="btnLiftHandset">Lift Handset (5V ON)</span>
+        </button>
+
+        <button id="btn-toggle-xray" class="btn-pill">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+          <span data-i18n="btnXray">X-Ray / Cutaway</span>
+        </button>
+
+        <div class="toolbar-separator"></div>
+
+        <button id="btn-reset-cam" class="btn-pill" title="Reset Camera View">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+          <span data-i18n="btnResetCam">Reset View</span>
+        </button>
+
+        <div class="toolbar-separator"></div>
+
+        <div style="display: flex; align-items: center; gap: 8px; font-size: 0.75rem; font-family: var(--font-mono); color: var(--text-muted);">
+          <span data-i18n="volLabel">VOL</span>
+          <input type="range" id="volume-slider" min="0" max="1" step="0.05" value="0.7" style="width: 70px; accent-color: var(--accent-cyan);">
+        </div>
+      </div>
+    </div>
+
+    <!-- Blueprint Technical Documentation Sidebar -->
+    <aside class="blueprint-sidebar">
+      <!-- Sidebar Navigation Tabs -->
+      <nav class="sidebar-tabs">
+        <button class="sidebar-tab-btn active" data-tab="tab-concept" data-i18n="tabConcept">1. Concept</button>
+        <button class="sidebar-tab-btn" data-tab="tab-bom" data-i18n="tabBom">2. BOM</button>
+        <button class="sidebar-tab-btn" data-tab="tab-arch" data-i18n="tabArch">3. Wiring</button>
+        <button class="sidebar-tab-btn" data-tab="tab-plan" data-i18n="tabPlan">4. Roadmap</button>
+        <button class="sidebar-tab-btn" data-tab="tab-sound" data-i18n="tabSound">5. Sounds</button>
+      </nav>
+
+      <!-- Sidebar Tab Content -->
+      <div class="sidebar-content">
+
+        <!-- TAB 1: CONCEPTO -->
+        <div id="tab-concept" class="tab-pane active">
+          <h2 class="section-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+            <span data-i18n="conceptTitle">General Concept</span>
+          </h2>
+          <p class="section-subtitle" data-i18n="conceptSubtitle">
+            A classic landline push-button telephone modified into an autonomous soundboard playing pre-recorded MP3s upon pressing its original keys, leveraging the mechanical hook switch as the master power cut-off.
+          </p>
+
+          <div class="blueprint-card">
+            <h4 data-i18n="cardZeroPowerTitle">0 µA Physical Cutoff Principle</h4>
+            <p data-i18n="cardZeroPowerText">
+              Unlike microcontrollers kept in continuous Deep Sleep (which still draw 15 to 80 mA), this design routes the mechanical hook switch contacts directly in series with the positive 5V supply line.
+            </p>
+            <div class="metric-box">
+              <div class="metric-item">
+                <div class="metric-label" data-i18n="metricStandbyLabel">Standby Draw</div>
+                <div class="metric-value highlight-green">0.000 µA</div>
+              </div>
+              <div class="metric-item">
+                <div class="metric-label" data-i18n="metricBootLabel">JQ6500 Boot Time</div>
+                <div class="metric-value highlight-cyan">&lt; 200 ms</div>
+              </div>
+            </div>
+            <p style="font-size: 0.75rem; color: var(--text-dim);" data-i18n="metricFootnote">
+              *Upon lifting the handset, internal leaf contacts snap closed instantly, powering up the JQ6500 module with zero perceptible lag.
+            </p>
+          </div>
+
+          <div class="blueprint-card">
+            <h4 data-i18n="cardAutonomousTitle">Autonomous Key Trigger Mode (Key Mode)</h4>
+            <p data-i18n="cardAutonomousText">
+              The JQ6500-16P module features 5 dedicated hardware trigger pins (<strong>K1 through K5</strong>). Pulling any pin to ground (GND) via a momentary push immediately fires the assigned track without requiring an Arduino or microcontroller.
+            </p>
+          </div>
+
+          <div class="blueprint-card">
+            <h4 data-i18n="cardAcousticTitle">Concealed Earpiece Acoustics</h4>
+            <p data-i18n="cardAcousticText">
+              The slim 8Ω mini speaker replaces the original carbon/dynamic earpiece capsule inside the handset. Audio plays directly into the user's ear for an authentic telephone call feel.
+            </p>
+          </div>
+        </div>
+
+        <!-- TAB 2: BOM (LISTA DE MATERIALES) -->
+        <div id="tab-bom" class="tab-pane">
+          <h2 class="section-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+            <span data-i18n="bomTitle">Bill of Materials (BOM)</span>
+          </h2>
+          <p class="section-subtitle" data-i18n="bomSubtitle">
+            Complete list of components required for Phase 1 (Desktop PoC) and the final modified telephone. Click 'View' to focus the 3D camera on any part.
+          </p>
+
+          <h4 style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 6px;" data-i18n="bomSectionPoc">Proof of Concept (PoC Bench)</h4>
+          <div class="bom-table-wrapper">
+            <table class="bom-table">
+              <thead>
+                <tr>
+                  <th data-i18n="colComponent">Component</th>
+                  <th data-i18n="colQty">Qty</th>
+                  <th data-i18n="colDetail">Details</th>
+                  <th data-i18n="col3D">3D</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>JQ6500-16P</strong></td>
+                  <td>1</td>
+                  <td data-i18n="bomJQ6500">JQ6500-16P MP3 Module (2MB/4MB SPI Flash)</td>
+                  <td><button class="btn-locate" data-focus="jq6500" data-i18n="btnView3D">🔍 View</button></td>
+                </tr>
+                <tr>
+                  <td><strong>MB102</strong></td>
+                  <td>1</td>
+                  <td data-i18n="bomMB102">MB102 Breadboard Power Supply (3.3V/5V)</td>
+                  <td><button class="btn-locate" data-focus="mb102" data-i18n="btnView3D">🔍 View</button></td>
+                </tr>
+                <tr>
+                  <td><span data-i18n="bomSpeaker">Mini Speaker 8Ω</span></td>
+                  <td>1</td>
+                  <td>8Ω 0.5W/1W slim profile</td>
+                  <td><button class="btn-locate" data-focus="speaker" data-i18n="btnView3D">🔍 View</button></td>
+                </tr>
+                <tr>
+                  <td><span data-i18n="bomPushbuttons">5x Tactile Pushbuttons</span></td>
+                  <td>5</td>
+                  <td>6x6x5mm tactile buttons</td>
+                  <td><button class="btn-locate" data-focus="pushbuttons" data-i18n="btnView3D">🔍 View</button></td>
+                </tr>
+                <tr>
+                  <td><span data-i18n="bomBreadboard">Breadboard</span></td>
+                  <td>1</td>
+                  <td>400 or 830 tie-points</td>
+                  <td><button class="btn-locate" data-focus="mb102" data-i18n="btnView3D">🔍 View</button></td>
+                </tr>
+                <tr>
+                  <td><span data-i18n="bomPowerSupply">Switching Adapter</span></td>
+                  <td>1</td>
+                  <td>9V or 12V DC 1A (5.5x2.1mm)</td>
+                  <td><button class="btn-locate" data-focus="mb102" data-i18n="btnView3D">🔍 View</button></td>
+                </tr>
+                <tr>
+                  <td><span data-i18n="bomDupont">Dupont Jumpers</span></td>
+                  <td>1 set</td>
+                  <td>M-M & M-F (20cm set)</td>
+                  <td><button class="btn-locate" data-focus="jq6500" data-i18n="btnView3D">🔍 View</button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h4 style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-top: 24px; margin-bottom: 6px;" data-i18n="bomSectionFinal">Final Hardware (Telephone Chassis)</h4>
+          <div class="bom-table-wrapper">
+            <table class="bom-table">
+              <thead>
+                <tr>
+                  <th data-i18n="colComponent">Component</th>
+                  <th data-i18n="colQty">Qty</th>
+                  <th data-i18n="colDetail">Function</th>
+                  <th data-i18n="col3D">3D</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong data-i18n="bomPhoneChassis">Vintage Phone Chassis</strong></td>
+                  <td>1</td>
+                  <td>Housing, cradle, handset</td>
+                  <td><button class="btn-locate" data-focus="keypad" data-i18n="btnView3D">🔍 View</button></td>
+                </tr>
+                <tr>
+                  <td><strong data-i18n="bomHookSwitch">Mechanical Hook Switch</strong></td>
+                  <td>1</td>
+                  <td>Physical 0µA power cutoff</td>
+                  <td><button class="btn-locate" data-focus="hook_switch" data-i18n="btnView3D">🔍 View</button></td>
+                </tr>
+                <tr>
+                  <td><strong data-i18n="bomKeypad">Keypad Matrix</strong></td>
+                  <td>1</td>
+                  <td>Keys 1-5 wired to GND</td>
+                  <td><button class="btn-locate" data-focus="keypad" data-i18n="btnView3D">🔍 View</button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- TAB 3: ARQUITECTURA & PINOUT -->
+        <div id="tab-arch" class="tab-pane">
+          <h2 class="section-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+            <span data-i18n="archTitle">Connections & JQ6500 Pinout</span>
+          </h2>
+          <p class="section-subtitle" data-i18n="archSubtitle">
+            Direct hardware wiring without code or microcontrollers. Keypad keys bridge trigger pins directly to ground (Active LOW).
+          </p>
+
+          <div class="blueprint-card">
+            <h4 data-i18n="cardPowerAudioTitle">Power & Audio Connections</h4>
+            <div class="pinout-grid">
+              <div class="pin-row">
+                <div><span class="pin-tag vcc">Pin 1 (VCC)</span> <span data-i18n="vccDesc">&rarr; Hook Switch Output (+5V)</span></div>
+                <div style="color: var(--accent-red); font-weight: bold;">+5V DC</div>
+              </div>
+              <div class="pin-row">
+                <div><span class="pin-tag gnd">Pin 4 (GND)</span> <span data-i18n="gndDesc">&rarr; Common Ground (0V)</span></div>
+                <div style="color: var(--text-muted); font-weight: bold;">0V GND</div>
+              </div>
+              <div class="pin-row">
+                <div><span class="pin-tag spk">Pin 2 (SPK+)</span> <span data-i18n="spkPDesc">&rarr; Mini Speaker (+)</span></div>
+                <div style="color: var(--accent-cyan); font-weight: bold;">Audio Out +</div>
+              </div>
+              <div class="pin-row">
+                <div><span class="pin-tag spk">Pin 3 (SPK-)</span> <span data-i18n="spkMDesc">&rarr; Mini Speaker (-)</span></div>
+                <div style="color: var(--accent-cyan); font-weight: bold;">Audio Out -</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="blueprint-card">
+            <h4 data-i18n="cardTriggersTitle">Keypad Triggers (Active LOW)</h4>
+            <p style="font-size: 0.78rem; margin-bottom: 8px;" data-i18n="triggersSubtitle">
+              Each key connects the trigger pin to ground when pressed. Internal pull-up resistors included in chip.
+            </p>
+            <div class="pinout-grid">
+              <div class="pin-row">
+                <div><span class="pin-tag trigger">Pin 15 (K1)</span> <span data-i18n="k1Desc">&rarr; Original Key [1]</span></div>
+                <div style="color: var(--text-muted);" data-i18n="track1">Track 00001.mp3</div>
+              </div>
+              <div class="pin-row">
+                <div><span class="pin-tag trigger">Pin 14 (K2)</span> <span data-i18n="k2Desc">&rarr; Original Key [2]</span></div>
+                <div style="color: var(--text-muted);" data-i18n="track2">Track 00002.mp3</div>
+              </div>
+              <div class="pin-row">
+                <div><span class="pin-tag trigger">Pin 13 (K3)</span> <span data-i18n="k3Desc">&rarr; Original Key [3]</span></div>
+                <div style="color: var(--text-muted);" data-i18n="track3">Track 00003.mp3</div>
+              </div>
+              <div class="pin-row">
+                <div><span class="pin-tag trigger">Pin 12 (K4)</span> <span data-i18n="k4Desc">&rarr; Original Key [4]</span></div>
+                <div style="color: var(--text-muted);" data-i18n="track4">Track 00004.mp3</div>
+              </div>
+              <div class="pin-row">
+                <div><span class="pin-tag trigger">Pin 11 (K5)</span> <span data-i18n="k5Desc">&rarr; Original Key [5]</span></div>
+                <div style="color: var(--text-muted);" data-i18n="track5">Track 00005.mp3</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 4: PLAN DE EJECUCIÓN -->
+        <div id="tab-plan" class="tab-pane">
+          <h2 class="section-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+            <span data-i18n="planTitle">Execution Roadmap by Phases</span>
+          </h2>
+          <p class="section-subtitle" data-i18n="planSubtitle">
+            Step-by-step engineering roadmap from breadboard proof-of-concept to final telephone assembly.
+          </p>
+
+          <div class="progress-container">
+            <div class="progress-header">
+              <span data-i18n="progressLabel">PROJECT PROGRESS</span>
+              <span id="execution-progress-text">0% Completed</span>
+            </div>
+            <div class="progress-bar-bg">
+              <div id="execution-progress-bar" class="progress-bar-fill"></div>
+            </div>
+          </div>
+
+          <!-- Phase 1 -->
+          <div class="phase-accordion">
+            <div class="phase-header">
+              <span data-i18n="phase1Title">Phase 1: Desktop PoC Validation</span>
+              <span class="cad-badge" data-i18n="phase1Badge">BREADBOARD</span>
+            </div>
+            <ul class="checklist-items">
+              <li>
+                <input type="checkbox" id="step1_1" class="step-checkbox">
+                <label for="step1_1" data-i18n="step1_1">Insert MB102 module into breadboard and configure voltage jumpers to 5V.</label>
+              </li>
+              <li>
+                <input type="checkbox" id="step1_2" class="step-checkbox">
+                <label for="step1_2" data-i18n="step1_2">Place JQ6500-16P module straddling the central trough; connect VCC and GND.</label>
+              </li>
+              <li>
+                <input type="checkbox" id="step1_3" class="step-checkbox">
+                <label for="step1_3" data-i18n="step1_3">Solder wire leads to the 8Ω mini speaker and connect to SPK+ and SPK- pins.</label>
+              </li>
+              <li>
+                <input type="checkbox" id="step1_4" class="step-checkbox">
+                <label for="step1_4" data-i18n="step1_4">Insert 5 tactile pushbuttons connecting one lead to GND and the other to K1..K5.</label>
+              </li>
+              <li>
+                <input type="checkbox" id="step1_5" class="step-checkbox">
+                <label for="step1_5" data-i18n="step1_5">Connect JQ6500 to PC via USB; flash audio files named 00001.mp3 through 00005.mp3.</label>
+              </li>
+              <li>
+                <input type="checkbox" id="step1_6" class="step-checkbox">
+                <label for="step1_6" data-i18n="step1_6">Simulate hanging up and lifting by connecting and disconnecting the 5V power line.</label>
+              </li>
+            </ul>
+          </div>
+
+          <!-- Phase 2 -->
+          <div class="phase-accordion">
+            <div class="phase-header">
+              <span data-i18n="phase2Title">Phase 2: Hardware Adaptation</span>
+              <span class="cad-badge" data-i18n="phase2Badge">MODDING</span>
+            </div>
+            <ul class="checklist-items">
+              <li>
+                <input type="checkbox" id="step2_1" class="step-checkbox">
+                <label for="step2_1" data-i18n="step2_1">Disassemble telephone chassis and remove obsolete telecom circuit boards.</label>
+              </li>
+              <li>
+                <input type="checkbox" id="step2_2" class="step-checkbox">
+                <label for="step2_2" data-i18n="step2_2">Locate Normally Open (NO) contacts on mechanical hook switch with multimeter.</label>
+              </li>
+              <li>
+                <input type="checkbox" id="step2_3" class="step-checkbox">
+                <label for="step2_3" data-i18n="step2_3">Isolate keypad traces and solder individual wires from keys 1-5 to K1..K5 + GND.</label>
+              </li>
+              <li>
+                <input type="checkbox" id="step2_4" class="step-checkbox">
+                <label for="step2_4" data-i18n="step2_4">Install slim 8Ω mini speaker inside handset earpiece capsule, secure with foam.</label>
+              </li>
+              <li>
+                <input type="checkbox" id="step2_5" class="step-checkbox">
+                <label for="step2_5" data-i18n="step2_5">Route speaker audio wires down through the original coiled handset cord.</label>
+              </li>
+            </ul>
+          </div>
+
+          <!-- Phase 3 -->
+          <div class="phase-accordion">
+            <div class="phase-header">
+              <span data-i18n="phase3Title">Phase 3: Final Launch & Assembly</span>
+              <span class="cad-badge" data-i18n="phase3Badge">ASSEMBLY</span>
+            </div>
+            <ul class="checklist-items">
+              <li>
+                <input type="checkbox" id="step3_1" class="step-checkbox">
+                <label for="step3_1" data-i18n="step3_1">Mount internal 5V regulator and JQ6500 module onto base plate with standoffs.</label>
+              </li>
+              <li>
+                <input type="checkbox" id="step3_2" class="step-checkbox">
+                <label for="step3_2" data-i18n="step3_2">Install 5.5mm DC barrel jack on rear panel for external power adapter.</label>
+              </li>
+              <li>
+                <input type="checkbox" id="step3_3" class="step-checkbox">
+                <label for="step3_3" data-i18n="step3_3">Perform complete functional test: lift -> dial tone / audio -> hang up (0µA cut).</label>
+              </li>
+              <li>
+                <input type="checkbox" id="step3_4" class="step-checkbox">
+                <label for="step3_4" data-i18n="step3_4">Fasten chassis with original screws. Ready for deployment!</label>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- TAB 5: SOUNDBOARD TEST -->
+        <div id="tab-sound" class="tab-pane">
+          <h2 class="section-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+            <span data-i18n="soundTitle">Virtual Soundboard Console</span>
+          </h2>
+          <p class="section-subtitle" data-i18n="soundSubtitle">
+            Test real-time audio playback simulating keys K1 through K5, or upload your own custom MP3 tracks.
+          </p>
+
+          <div class="sound-cards-grid">
+            <!-- Key 1 -->
+            <div class="sound-card" data-key="1">
+              <div class="sound-card-left">
+                <div class="key-badge k1">1</div>
+                <div class="sound-info">
+                  <h5 data-i18n="soundTrack1Title">Track 1: Retro Chime & Greeting</h5>
+                  <p>00001.mp3 • Pin K1 &bull; <span class="custom-badge" data-key="1">Synth Retro</span></p>
+                </div>
+              </div>
+              <div class="sound-card-right">
+                <label class="btn-upload-label" title="Upload custom MP3" data-i18n-title="uploadTooltip">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                  <input type="file" accept="audio/*" class="file-input-k" data-key="1" style="display: none;">
+                </label>
+                <button class="btn-sound-play sound-play-btn" data-key="1">▶</button>
+              </div>
+            </div>
+
+            <!-- Key 2 -->
+            <div class="sound-card" data-key="2">
+              <div class="sound-card-left">
+                <div class="key-badge k2">2</div>
+                <div class="sound-info">
+                  <h5 data-i18n="soundTrack2Title">Track 2: 56k Modem Handshake</h5>
+                  <p>00002.mp3 • Pin K2 &bull; <span class="custom-badge" data-key="2">Synth Dial-up</span></p>
+                </div>
+              </div>
+              <div class="sound-card-right">
+                <label class="btn-upload-label" title="Upload custom MP3" data-i18n-title="uploadTooltip">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                  <input type="file" accept="audio/*" class="file-input-k" data-key="2" style="display: none;">
+                </label>
+                <button class="btn-sound-play sound-play-btn" data-key="2">▶</button>
+              </div>
+            </div>
+
+            <!-- Key 3 -->
+            <div class="sound-card" data-key="3">
+              <div class="sound-card-left">
+                <div class="key-badge k3">3</div>
+                <div class="sound-info">
+                  <h5 data-i18n="soundTrack3Title">Track 3: Telco SIT Error Announcement</h5>
+                  <p>00003.mp3 • Pin K3 &bull; <span class="custom-badge" data-key="3">SIT Tone</span></p>
+                </div>
+              </div>
+              <div class="sound-card-right">
+                <label class="btn-upload-label" title="Upload custom MP3" data-i18n-title="uploadTooltip">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                  <input type="file" accept="audio/*" class="file-input-k" data-key="3" style="display: none;">
+                </label>
+                <button class="btn-sound-play sound-play-btn" data-key="3">▶</button>
+              </div>
+            </div>
+
+            <!-- Key 4 -->
+            <div class="sound-card" data-key="4">
+              <div class="sound-card-left">
+                <div class="key-badge k4">4</div>
+                <div class="sound-info">
+                  <h5 data-i18n="soundTrack4Title">Track 4: Cartoon Boing FX</h5>
+                  <p>00004.mp3 • Pin K4 &bull; <span class="custom-badge" data-key="4">Cartoon FX</span></p>
+                </div>
+              </div>
+              <div class="sound-card-right">
+                <label class="btn-upload-label" title="Upload custom MP3" data-i18n-title="uploadTooltip">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                  <input type="file" accept="audio/*" class="file-input-k" data-key="4" style="display: none;">
+                </label>
+                <button class="btn-sound-play sound-play-btn" data-key="4">▶</button>
+              </div>
+            </div>
+
+            <!-- Key 5 -->
+            <div class="sound-card" data-key="5">
+              <div class="sound-card-left">
+                <div class="key-badge k5">5</div>
+                <div class="sound-info">
+                  <h5 data-i18n="soundTrack5Title">Track 5: 8-Bit Victory Fanfare</h5>
+                  <p>00005.mp3 • Pin K5 &bull; <span class="custom-badge" data-key="5">8-Bit Arp</span></p>
+                </div>
+              </div>
+              <div class="sound-card-right">
+                <label class="btn-upload-label" title="Upload custom MP3" data-i18n-title="uploadTooltip">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                  <input type="file" accept="audio/*" class="file-input-k" data-key="5" style="display: none;">
+                </label>
+                <button class="btn-sound-play sound-play-btn" data-key="5">▶</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </aside>
+
+  </main>
+
+  <!-- Script initialization -->
+  <script type="module" src="js/app.js"></script>
+  <script>
+    // Tab switcher logic for sidebar
+    document.querySelectorAll('.sidebar-tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.sidebar-tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        const tabId = btn.dataset.tab;
+        const pane = document.getElementById(tabId);
+        if (pane) pane.classList.add('active');
+      });
+    });
+  </script>
+</body>
+</html>

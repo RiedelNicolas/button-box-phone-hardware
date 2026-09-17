@@ -1,0 +1,19 @@
+{
+  "name": "telefono-soundboard-blueprint",
+  "version": "1.0.0",
+  "description": "Interactive 3D Blueprint for the Teléfono Soundboard hardware modding project",
+  "scripts": {
+    "start": "python3 -m http.server 8080",
+    "serve": "npx serve -l 8080 ."
+  },
+  "keywords": [
+    "threejs",
+    "hardware",
+    "blueprint",
+    "soundboard",
+    "telephone",
+    "electronics"
+  ],
+  "author": "Nicolas Riedel",
+  "license": "MIT"
+}
