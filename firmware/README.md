@@ -15,7 +15,7 @@ Behavior:
 | Boot | Plays `/beep.wav` (a short 3-note ascending chime). |
 | Press a key while idle | Plays that key's file to the end. |
 | Press any key while audio is playing | Stops playback only, immediately. It does **not** start another clip. |
-| Two keys at once while audio is playing | Stops playback only; presses are ignored until all keys are released. |
+| Two keys at once while audio is playing | Stops playback only; presses are ignored until the keys pressed for that stop are released. A key held down from before (held at boot, stuck) does not block this. |
 | LED | Blinks while audio plays, off when idle. |
 | File missing | Logged on the serial monitor, nothing else happens (no crash). |
 
@@ -194,10 +194,12 @@ firmware/
   platformio.ini            PlatformIO project (env esp32dev, LittleFS, custom partitions)
   partitions.csv            4 MB flash layout (factory app + large LittleFS)
   src/main.cpp              the firmware (pin/file mapping at the top)
+  src/press_lockout.h       post-stop press lockout (pure logic, host-testable)
   placeholders/*.wav        generated placeholder tones (committed)
   data/                     LittleFS source folder (your audio, not committed)
   tools/gen_placeholders.py generates placeholders/*.wav
   tools/copy_placeholders.py PlatformIO pre-script: fills data/ with missing placeholders
+  tools/test_press_lockout.c host unit test for press_lockout.h
 ```
 
 `src/main.cpp`:
@@ -206,12 +208,19 @@ firmware/
 - `I2S_BCLK`, `I2S_LRC`, `I2S_DOUT`, `LED_PIN`: amplifier and LED pins.
 - `updateButtons()`: per-button 50 ms debounce, calls `onButtonPressed()` once per press.
 - `onButtonPressed()`: stops playback if something is playing, otherwise starts that key's file.
-  After a stop it ignores presses until all keys are released.
+  After a stop it ignores presses until the keys pressed for that stop are released (2 s safety
+  timeout); keys already held before the stop do not count. The logic is in `press_lockout.h`.
 - `isPlaying()`: library running, or still inside the DMA drain time after end of file
   (tracked by the `audio_eof_mp3()` callback).
 - `playFile()`: checks the file exists, then starts it; logs and returns if it cannot.
 - `updateLed()`: blinks the LED with `millis()` while playing.
 - `loop()`: `audio.loop()` + buttons + LED, no `delay()`.
+
+Host unit test of the press lockout (any C compiler, from `firmware/`):
+
+```bash
+cc -std=c11 -Wall -Wextra -Werror -o /tmp/test_press_lockout tools/test_press_lockout.c && /tmp/test_press_lockout
+```
 
 ## Changing the pin mapping
 
@@ -244,8 +253,10 @@ Expected serial lines are shown in `code`.
    Pressing again while idle plays that key normally.
 4. **Two keys at once during playback.** While a clip plays, press two keys together: playback
    stops and no clip starts. `[audio] stopped by button press`, then
-   `[button] ignored: release all keys after a stop` for the second key. After releasing both,
-   a single press plays again.
+   `[button] ignored: release the keys pressed for the last stop first` for the second key.
+   After releasing both, a single press plays again. Also check: hold one key down while
+   powering on (or keep one pressed the whole time), play and stop a clip with another key,
+   release it: the next press must play (the held key must not lock the buttons).
 5. **Stop cuts immediately.** Replace one clip with a long file (several seconds) and stop it
    mid-way: the sound must cut at once, with no ~0.5 s tail.
 6. **Missing file.** Temporarily change one `BUTTONS[]` entry to a file that does not exist
