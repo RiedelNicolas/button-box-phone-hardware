@@ -6,6 +6,13 @@ import { BreadboardModel } from './models/breadboard.js';
 import { ModdingModel } from './models/modding.js';
 import { KEYS, KEY_BY_CHAR } from './hardware.js';
 
+// Preset camera (position, look-at target) per view, tuned for a 1.3 aspect viewport
+const VIEW_CAMERAS = {
+  phone: [new THREE.Vector3(27, 29, 35), new THREE.Vector3(-0.5, 3.0, 0.5)],
+  breadboard: [new THREE.Vector3(-2, 34, 27), new THREE.Vector3(-2, 1.0, 0.5)],
+  modding: [new THREE.Vector3(22, 25, 37), new THREE.Vector3(2, 3, 0)]
+};
+
 // Short description shown in the viewport for each 3D view
 const VIEW_CONTEXT = {
   phone: '<strong>View: Complete Phone</strong> — Click keys 1-9 or 0 to play that key\'s tone. The key lights up and the LED blinks while it plays.',
@@ -79,6 +86,10 @@ class BlueprintApp {
     // Initial visibility: show phone, hide others
     this.breadboardModel.group.visible = false;
     this.moddingModel.group.visible = false;
+
+    // Initial camera: framed phone view
+    const [camPos, lookAt] = VIEW_CAMERAS.phone;
+    this.sceneManager.setCamera(this.sceneManager.framedPosition(camPos, lookAt), lookAt);
 
     // Updatable loop for sound waves and the status LED
     this.ledBlinkTime = 0;
@@ -189,26 +200,9 @@ class BlueprintApp {
     this.breadboardModel.group.visible = (viewName === 'breadboard');
     this.moddingModel.group.visible = (viewName === 'modding');
 
-    // Camera viewpoints
-    if (viewName === 'phone') {
-      this.sceneManager.animateCameraTo(
-        new THREE.Vector3(22, 24, 28),
-        new THREE.Vector3(0, 4, 0),
-        700
-      );
-    } else if (viewName === 'breadboard') {
-      this.sceneManager.animateCameraTo(
-        new THREE.Vector3(-2, 34, 27),
-        new THREE.Vector3(-2, 1.0, 0.5),
-        700
-      );
-    } else if (viewName === 'modding') {
-      this.sceneManager.animateCameraTo(
-        new THREE.Vector3(18, 20, 30),
-        new THREE.Vector3(2, 3, 0),
-        700
-      );
-    }
+    // Camera viewpoint (framed for the current viewport aspect ratio)
+    const [camPos, lookAt] = VIEW_CAMERAS[viewName];
+    this.sceneManager.animateCameraTo(this.sceneManager.framedPosition(camPos, lookAt), lookAt, 700);
 
     // Update UI tabs
     document.querySelectorAll('.view-tab-btn').forEach(btn => {
