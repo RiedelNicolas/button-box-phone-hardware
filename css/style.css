@@ -742,3 +742,65 @@ code {
     height: 45%;
   }
 }
+
+/* Phones: keep header, view switcher and toolbar inside the viewport width */
+@media (max-width: 480px) {
+  .blueprint-header {
+    height: auto;
+    min-height: 64px;
+    padding: 8px 12px;
+  }
+  .brand-section {
+    gap: 10px;
+    min-width: 0;
+  }
+  .brand-icon {
+    flex-shrink: 0;
+  }
+  .brand-title-group h1 {
+    font-size: 1rem;
+    flex-wrap: wrap;
+    row-gap: 2px;
+  }
+  .brand-title-group p {
+    font-size: 0.66rem;
+  }
+  .viewport-header-bar {
+    top: 10px;
+    left: 8px;
+    right: 8px;
+    gap: 2px;
+    overflow-x: auto;
+  }
+  .view-tab-btn svg {
+    display: none;
+  }
+  .view-tab-btn {
+    flex: 1 0 auto;
+    justify-content: center;
+    padding: 7px 8px;
+    font-size: 0.72rem;
+    white-space: nowrap;
+  }
+  .viewport-floating-toolbar {
+    bottom: 10px;
+    gap: 6px;
+    padding: 6px 8px;
+    max-width: calc(100% - 16px);
+  }
+  .viewport-floating-toolbar .btn-pill {
+    padding: 6px 10px;
+    font-size: 0.74rem;
+    gap: 6px;
+  }
+  .viewport-floating-toolbar input[type="range"] {
+    width: 56px !important;
+  }
+  .context-info-pill {
+    bottom: 62px;
+    left: 8px;
+    max-width: calc(100% - 16px);
+    padding: 6px 10px;
+    font-size: 0.7rem;
+  }
+}
