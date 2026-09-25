@@ -19,9 +19,10 @@ Behavior:
 | LED | Blinks while audio plays, off when idle. |
 | File missing | Logged on the serial monitor, nothing else happens (no crash). |
 
-Buttons are debounced (50 ms) and the main loop has no `delay()`, so the audio keeps streaming
-while the buttons and the LED are serviced. `audio.loop()` can block for up to about 40 ms inside
-`i2s_write()` when the I2S DMA queue is full, which is harmless next to the 50 ms debounce.
+Buttons are debounced (50 ms) and the main loop never blocks (no `delay()`), so the audio keeps
+streaming while the buttons and the LED are serviced. `audio.loop()` only refills the library's
+input buffer from the file; decoding and `i2s_write()` run in the library's own audio task, so the
+main loop never waits on the I2S DMA queue.
 
 "Playing" includes the tail still queued in the I2S DMA buffers (up to about 0.5 s at 16 kHz)
 after the library has finished reading the file, so the LED and the stop rule follow what you

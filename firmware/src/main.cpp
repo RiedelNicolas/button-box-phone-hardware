@@ -220,8 +220,9 @@ void setup() {
 }
 
 void loop() {
-  // Feeds the I2S output; must run often, so no delay() in this loop. It can block for up to
-  // ~40 ms inside i2s_write() when the DMA queue is full, which is fine for the 50 ms debounce.
+  // Refills the library's input buffer from the file; must run often, so no delay() in this loop.
+  // Decoding and i2s_write() run in the library's own audio task (ESP32-audioI2S 3.0.12), so this
+  // call never waits on the I2S DMA queue and the loop never blocks.
   audio.loop();
 
   uint32_t now = millis();
