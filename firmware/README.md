@@ -1,5 +1,9 @@
 # Firmware: ESP32 button box phone
 
+> **Status: UNVERIFIED on hardware.** This firmware compiles and its filesystem image builds,
+> but it has not been run on a real ESP32 + MAX98357A yet (and not in a simulator). Run the
+> [manual hardware test](#manual-hardware-test) below on the board before relying on it.
+
 Firmware for the button box phone: an ESP32 dev board inside a recycled phone case. Each of the
 10 keypad keys (1 to 9 and 0) is a rubber push button that plays its own WAV clip through a
 MAX98357A I2S amplifier and an 8 ohm speaker. Power is always on over USB.
@@ -10,12 +14,18 @@ Behavior:
 | --- | --- |
 | Boot | Plays `/beep.wav` (a short 3-note ascending chime). |
 | Press a key while idle | Plays that key's file to the end. |
-| Press any key while audio is playing | Stops playback only. It does **not** start another clip. |
+| Press any key while audio is playing | Stops playback only, immediately. It does **not** start another clip. |
+| Two keys at once while audio is playing | Stops playback only; presses are ignored until all keys are released. |
 | LED | Blinks while audio plays, off when idle. |
 | File missing | Logged on the serial monitor, nothing else happens (no crash). |
 
-Buttons are debounced (50 ms) and the main loop never blocks (no `delay()`), so the audio keeps
-streaming while the buttons and the LED are serviced.
+Buttons are debounced (50 ms) and the main loop has no `delay()`, so the audio keeps streaming
+while the buttons and the LED are serviced. `audio.loop()` can block for up to about 40 ms inside
+`i2s_write()` when the I2S DMA queue is full, which is harmless next to the 50 ms debounce.
+
+"Playing" includes the tail still queued in the I2S DMA buffers (up to about 0.5 s at 16 kHz)
+after the library has finished reading the file, so the LED and the stop rule follow what you
+actually hear. A stop flushes that queue.
 
 ## Hardware
 
@@ -196,9 +206,12 @@ firmware/
 - `I2S_BCLK`, `I2S_LRC`, `I2S_DOUT`, `LED_PIN`: amplifier and LED pins.
 - `updateButtons()`: per-button 50 ms debounce, calls `onButtonPressed()` once per press.
 - `onButtonPressed()`: stops playback if something is playing, otherwise starts that key's file.
+  After a stop it ignores presses until all keys are released.
+- `isPlaying()`: library running, or still inside the DMA drain time after end of file
+  (tracked by the `audio_eof_mp3()` callback).
 - `playFile()`: checks the file exists, then starts it; logs and returns if it cannot.
 - `updateLed()`: blinks the LED with `millis()` while playing.
-- `loop()`: `audio.loop()` + buttons + LED, never blocking.
+- `loop()`: `audio.loop()` + buttons + LED, no `delay()`.
 
 ## Changing the pin mapping
 
@@ -211,3 +224,37 @@ Edit the `BUTTONS[]` array at the top of `src/main.cpp`, for example:
 Rules: use a GPIO that supports `INPUT_PULLUP` and is not one of the avoided pins listed in
 [Wiring / pinout](#wiring--pinout), and do not reuse the I2S or LED pins. You can also change
 the file name of any entry; keep the leading `/`. Rebuild and `pio run -t upload`.
+
+## Manual hardware test
+
+Run this on the real board with the serial monitor open (`pio device monitor`, 115200 baud).
+Expected serial lines are shown in `code`.
+
+1. **Boot beep + LED.** Upload the filesystem and firmware, then reset. The chime plays and the
+   LED blinks for the whole chime, then turns off.
+   `[boot] button box phone firmware`, ten `[boot] key 1 -> GPIO 23 -> /audio1.wav` lines,
+   `[boot] LittleFS: N of M bytes used`, `[audio] playing /beep.wav`,
+   `[audio] end of file ... (DMA drains in 532 ms)`, `[audio] idle`.
+2. **Idle press plays to the end.** Press key 1 while idle: its tone plays to the end, LED
+   blinks until the sound stops. `[button] key 1 (GPIO 23) pressed`, `[audio] playing /audio1.wav`,
+   `[audio] end of file ...`, `[audio] idle`. Repeat for all 10 keys (each has a different pitch).
+3. **Press during playback stops only.** Press a key, then press another key while it plays:
+   the sound stops and nothing new starts; the LED turns off.
+   `[button] key 2 (GPIO 22) pressed`, `[audio] stopped by button press`, `[audio] idle`.
+   Pressing again while idle plays that key normally.
+4. **Two keys at once during playback.** While a clip plays, press two keys together: playback
+   stops and no clip starts. `[audio] stopped by button press`, then
+   `[button] ignored: release all keys after a stop` for the second key. After releasing both,
+   a single press plays again.
+5. **Stop cuts immediately.** Replace one clip with a long file (several seconds) and stop it
+   mid-way: the sound must cut at once, with no ~0.5 s tail.
+6. **Missing file.** Temporarily change one `BUTTONS[]` entry to a file that does not exist
+   (for example `"/missing.wav"`), rebuild and upload the firmware, press that key:
+   `[audio] missing file: /missing.wav (run 'pio run -t uploadfs')`, no sound, no reboot; other
+   keys still work. (Deleting a file from `data/` is not enough: `buildfs` refills missing
+   files with placeholders.) Restore the entry afterwards.
+7. **Failed / empty LittleFS.** Run `pio run -t erase`, then upload only the firmware
+   (`pio run -t upload`, no `uploadfs`): `[boot] LittleFS mount failed. Upload the audio with
+   'pio run -t uploadfs'.` and `[audio] LittleFS not mounted, cannot play /beep.wav`; pressing
+   keys logs `[audio] LittleFS not mounted, cannot play /audioN.wav`, with no crash or reboot
+   loop. Then run `pio run -t uploadfs` and reset to recover.
