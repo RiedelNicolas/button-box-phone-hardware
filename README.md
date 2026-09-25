@@ -1,5 +1,7 @@
 # Button Box Phone 📞🔊
 
+The site lives at https://funnyphone.nriedel.com.ar.
+
 A recycled phone case turned into a sound box. Each of the 10 keypad keys (1 to 9 and 0) is a
 rubber push button that plays its own short WAV clip. Inside: an **ESP32 dev board**, a
 **MAX98357A I2S amplifier** driving an **8 Ω speaker**, one status **LED**, and always-on
@@ -82,8 +84,7 @@ Open [http://localhost:8080](http://localhost:8080) in any modern browser.
 
 The workflow [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) checks the syntax of
 every `js/*.js` and `js/models/*.js` file and deploys the site to GitHub Pages on every push to
-`main` or `RiedelNicolas/button-box-phone-blueprint` (or manually from the **Actions** tab).
+`main` (or manually from the **Actions** tab).
 
 To enable it: repository **Settings** > **Pages** > **Build and deployment** > **Source**:
-**GitHub Actions**. The site is published at
-`https://riedelnicolas.github.io/button-box-phone-hardware/`.
+**GitHub Actions**. The site is published at https://funnyphone.nriedel.com.ar.
