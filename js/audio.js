@@ -14,11 +14,6 @@ class SoundboardAudioEngine {
     this.volume = 0.7;
     this.customSounds = {};   // key char -> AudioBuffer
     this.current = null;      // { nodes: [...], timer } of the clip playing now
-
-    // DTMF frequencies (Hz), used for the keys that are not wired (* and #)
-    this.dtmfFreqs = {
-      '*': [941, 1209], '#': [941, 1477]
-    };
   }
 
   init() {
@@ -35,6 +30,11 @@ class SoundboardAudioEngine {
     this.volume = Math.max(0, Math.min(1, val));
   }
 
+  // True while a clip is playing
+  isPlaying() {
+    return this.current !== null;
+  }
+
   // Stops the clip that is playing, if any
   stop() {
     if (!this.current) return;
@@ -47,7 +47,8 @@ class SoundboardAudioEngine {
     if (cb) cb();
   }
 
-  // Plays the clip of a trigger key ('1'..'9', '0'). A new press replaces the previous clip.
+  // Plays the clip of a trigger key ('1'..'9', '0'). The caller decides whether a press starts
+  // or stops playback (see app.js); this only starts a clip, stopping any leftover one first.
   playKey(keyChar, onEnded) {
     this.init();
     this.stop();
@@ -88,30 +89,6 @@ class SoundboardAudioEngine {
       }
     }, ms);
     this.current = entry;
-  }
-
-  // Short DTMF beep for keys without a clip (* and #)
-  playDTMF(key, duration = 0.18) {
-    this.init();
-    const freqs = this.dtmfFreqs[key];
-    if (!freqs) return;
-
-    const t = this.ctx.currentTime;
-    const gain = this.ctx.createGain();
-    gain.gain.setValueAtTime(0, t);
-    gain.gain.linearRampToValueAtTime(this.volume * 0.2, t + 0.01);
-    gain.gain.setValueAtTime(this.volume * 0.2, t + duration - 0.02);
-    gain.gain.linearRampToValueAtTime(0, t + duration);
-    gain.connect(this.ctx.destination);
-
-    freqs.forEach(f => {
-      const osc = this.ctx.createOscillator();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(f, t);
-      osc.connect(gain);
-      osc.start(t);
-      osc.stop(t + duration);
-    });
   }
 
   loadCustomAudio(keyChar, file) {
