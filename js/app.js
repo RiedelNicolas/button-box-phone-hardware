@@ -5,14 +5,14 @@ import { PhoneModel } from './models/phone.js';
 import { BreadboardModel } from './models/breadboard.js';
 import { ModdingModel } from './models/modding.js';
 import { translations } from './i18n.js';
+import { KEY_BY_CHAR } from './hardware.js';
 
 class BlueprintApp {
   constructor() {
     this.currentLang = localStorage.getItem('blueprint_lang') || 'en';
     this.activeView = 'phone'; // 'phone', 'breadboard', 'modding'
-    this.isHandsetLifted = false;
-    this.isPowerOn = false; // 0µA until lifted
     this.isXRay = false;
+    this.activeKey = null;     // key whose clip is playing (demo state, also used by tests)
 
     this.initAudio();
     this.init3D();
@@ -59,8 +59,6 @@ class BlueprintApp {
     });
 
     // Update dynamic UI state
-    this.updateHUDPowerStatus();
-    this.updateHandsetButtonUI();
     this.updateContextInfo();
     this.updateChecklistProgress();
   }
@@ -86,10 +84,18 @@ class BlueprintApp {
     this.breadboardModel.group.visible = false;
     this.moddingModel.group.visible = false;
 
-    // Updatable loop for soundwaves
+    // Updatable loop for sound waves and the status LED
+    this.ledBlinkTime = 0;
     this.sceneManager.updatables.push((delta) => {
       if (this.phoneModel) {
         this.phoneModel.updateWaves(delta);
+      }
+      if (this.activeKey) {
+        this.ledBlinkTime += delta;
+        this.breadboardModel.setLed(Math.floor(this.ledBlinkTime / 0.15) % 2 === 0);
+      } else {
+        this.ledBlinkTime = 0;
+        this.breadboardModel.setLed(false);
       }
     });
 
@@ -109,15 +115,9 @@ class BlueprintApp {
 
     let activeObjects = [];
     if (this.activeView === 'phone') {
-      activeObjects = [
-        ...this.phoneModel.interactiveButtons,
-        this.phoneModel.handsetGroup
-      ];
+      activeObjects = [...this.phoneModel.interactiveButtons];
     } else if (this.activeView === 'breadboard') {
-      activeObjects = [
-        ...this.breadboardModel.interactivePushbuttons,
-        this.breadboardModel.mb102SwitchBtn
-      ];
+      activeObjects = [...this.breadboardModel.interactivePushbuttons];
     }
 
     const intersects = this.sceneManager.raycaster.intersectObjects(activeObjects, true);
@@ -125,17 +125,11 @@ class BlueprintApp {
     if (intersects.length > 0) {
       let hit = intersects[0].object;
 
-      while (hit && !hit.userData.character && !hit.userData.isHandset && !hit.userData.isBreadboardButton && hit.parent && hit !== this.sceneManager.scene) {
+      while (hit && !hit.userData.character && !hit.userData.isBreadboardButton && hit.parent && hit !== this.sceneManager.scene) {
         hit = hit.parent;
       }
 
       if (!hit) return;
-
-      // Clicked on Handset
-      if (hit.userData.isHandset) {
-        this.toggleHandset();
-        return;
-      }
 
       // Clicked on Phone Keypad Button
       if (hit.userData.character) {
@@ -146,71 +140,49 @@ class BlueprintApp {
 
       // Clicked on Breadboard Pushbutton
       if (hit.userData.isBreadboardButton) {
-        const keyNum = hit.userData.keyNumber;
-        this.handleBreadboardButtonTrigger(keyNum);
+        this.handleBreadboardButtonTrigger(hit.userData.keyChar);
         return;
       }
     }
   }
 
-  toggleHandset() {
-    this.isHandsetLifted = !this.isHandsetLifted;
-
-    if (this.isHandsetLifted) {
-      // Lifted: Hook switch closes -> 5V circuit LIVE!
-      this.isPowerOn = true;
-      this.audio.playHookLift();
-      this.phoneModel.setHandsetLifted(true, () => {
-        setTimeout(() => {
-          if (this.isHandsetLifted) {
-            this.audio.startDialTone();
-          }
-        }, 220);
-      });
-      this.moddingModel.updateCircuitState(true);
-    } else {
-      // Hung up: Hook switch opens -> INSTANT 0µA CUT-OFF!
-      this.isPowerOn = false;
-      this.audio.playHookDrop();
-      this.phoneModel.setHandsetLifted(false);
-      this.moddingModel.updateCircuitState(false);
-    }
-
-    this.updateHUDPowerStatus();
-    this.updateHandsetButtonUI();
+  // Plays the clip of a trigger key and highlights it (3D key, sound card, LED) while it plays
+  playKey(char) {
+    const info = KEY_BY_CHAR[char];
+    if (!info) return false;
+    if (this.activeKey) this.unhighlightTrackInUI(this.activeKey);
+    this.activeKey = char;
+    this.phoneModel.setActiveKey(char);
+    this.highlightTrackInUI(char);
+    this.phoneModel.triggerSoundWaveAnimation();
+    this.audio.playKey(char, () => {
+      this.unhighlightTrackInUI(char);
+      if (this.activeKey === char) {
+        this.activeKey = null;
+        this.phoneModel.setActiveKey(null);
+      }
+    });
+    return true;
   }
 
   handleButtonTrigger(char) {
     this.phoneModel.animateButtonPress(char);
-
-    // If phone is still hung up, warn user
-    if (!this.isHandsetLifted) {
-      this.showToast(this.t('toastHungUp'));
-      return;
-    }
-
-    const keyNum = parseInt(char);
-    if (!isNaN(keyNum) && keyNum >= 1 && keyNum <= 5) {
-      // Soundboard track K1..K5
-      this.highlightTrackInUI(keyNum);
-      this.phoneModel.triggerSoundWaveAnimation();
-      this.audio.playTrack(keyNum, () => {
-        this.unhighlightTrackInUI(keyNum);
-      });
-      this.showToast(this.t('toastPlayingTrack', { key: keyNum }));
+    const info = KEY_BY_CHAR[char];
+    if (info) {
+      this.playKey(char);
+      this.showToast(`🔊 Key ${char} (GPIO ${info.gpio}) → ${info.file}`);
     } else {
-      // DTMF dial tone for other buttons
+      // * and # are not wired: just a keypad beep
       this.audio.playDTMF(char, 0.2);
     }
   }
 
-  handleBreadboardButtonTrigger(keyNum) {
-    this.breadboardModel.animateButtonPress(keyNum);
-    this.highlightTrackInUI(keyNum);
-    this.audio.playTrack(keyNum, () => {
-      this.unhighlightTrackInUI(keyNum);
-    });
-    this.showToast(this.t('toastPulseLow', { key: keyNum }));
+  handleBreadboardButtonTrigger(char) {
+    const info = KEY_BY_CHAR[char];
+    if (!info) return;
+    this.breadboardModel.animateButtonPress(char);
+    this.playKey(char);
+    this.showToast(`⚡ GPIO ${info.gpio} pulled LOW → key ${char} → ${info.file}`);
   }
 
   switchView(viewName) {
@@ -230,8 +202,8 @@ class BlueprintApp {
       );
     } else if (viewName === 'breadboard') {
       this.sceneManager.animateCameraTo(
-        new THREE.Vector3(0, 30, 22),
-        new THREE.Vector3(0, 1.5, 0),
+        new THREE.Vector3(-2, 34, 27),
+        new THREE.Vector3(-2, 1.0, 0.5),
         700
       );
     } else if (viewName === 'modding') {
@@ -265,85 +237,40 @@ class BlueprintApp {
 
   focusOnComponent(componentKey) {
     switch (componentKey) {
-      case 'jq6500':
+      case 'esp32':
         this.switchView('breadboard');
-        this.sceneManager.animateCameraTo(
-          new THREE.Vector3(-2, 10, 8),
-          new THREE.Vector3(-2, 1.8, 0),
-          600
-        );
+        this.sceneManager.animateCameraTo(new THREE.Vector3(-7, 11, 9), new THREE.Vector3(-7, 1.8, 0), 600);
         break;
-      case 'mb102':
+      case 'amp':
         this.switchView('breadboard');
-        this.sceneManager.animateCameraTo(
-          new THREE.Vector3(-8.8, 11, 7),
-          new THREE.Vector3(-8.8, 1.5, 0),
-          600
-        );
+        this.sceneManager.animateCameraTo(new THREE.Vector3(6, 10, 6), new THREE.Vector3(6, 1.5, -3), 600);
+        break;
+      case 'usb':
+        this.switchView('breadboard');
+        this.sceneManager.animateCameraTo(new THREE.Vector3(-15, 10, 9), new THREE.Vector3(-15, 1.5, 0), 600);
+        break;
+      case 'led':
+        this.switchView('breadboard');
+        this.sceneManager.animateCameraTo(new THREE.Vector3(-1.5, 8, 3), new THREE.Vector3(-1.5, 1.2, -3.6), 600);
         break;
       case 'speaker':
         this.switchView('phone');
+        this.isXRay = true;
         this.phoneModel.toggleXRayMode(true);
-        const xrayBtn = document.getElementById('btn-toggle-xray');
-        if (xrayBtn) xrayBtn.classList.add('active');
-        this.sceneManager.animateCameraTo(
-          new THREE.Vector3(-5.5, 14, -10),
-          new THREE.Vector3(-5.5, 6.4, -5.6),
-          600
-        );
-        break;
-      case 'hook_switch':
-        this.switchView('phone');
-        this.phoneModel.setHandsetLifted(true);
-        this.sceneManager.animateCameraTo(
-          new THREE.Vector3(-5.5, 13, -2),
-          new THREE.Vector3(-5.5, 6.4, -5.6),
-          600
-        );
+        {
+          const xrayBtn = document.getElementById('btn-toggle-xray');
+          if (xrayBtn) xrayBtn.classList.add('active');
+        }
+        this.sceneManager.animateCameraTo(new THREE.Vector3(-5.5, 14, -10), new THREE.Vector3(-5.5, 6.4, -5.6), 600);
         break;
       case 'keypad':
         this.switchView('phone');
-        this.sceneManager.animateCameraTo(
-          new THREE.Vector3(3.6, 16, 7),
-          new THREE.Vector3(3.6, 4.6, 0.8),
-          600
-        );
+        this.sceneManager.animateCameraTo(new THREE.Vector3(3.6, 16, 7), new THREE.Vector3(3.6, 4.6, 0.8), 600);
         break;
       case 'pushbuttons':
         this.switchView('breadboard');
-        this.sceneManager.animateCameraTo(
-          new THREE.Vector3(5.5, 10, 8),
-          new THREE.Vector3(5.5, 1.2, 2.4),
-          600
-        );
+        this.sceneManager.animateCameraTo(new THREE.Vector3(-2, 12, 13), new THREE.Vector3(-2, 1.2, 3.4), 600);
         break;
-    }
-  }
-
-  updateHUDPowerStatus() {
-    const badge = document.getElementById('power-status-badge');
-    const statusText = document.getElementById('power-status-text');
-
-    if (this.isPowerOn) {
-      badge.className = 'status-badge live';
-      if (statusText) statusText.innerText = this.t('statusLive');
-    } else {
-      badge.className = 'status-badge standby';
-      if (statusText) statusText.innerText = this.t('statusStandby');
-    }
-  }
-
-  updateHandsetButtonUI() {
-    const btnText = document.getElementById('btn-toggle-handset-text');
-    const btn = document.getElementById('btn-toggle-handset');
-    if (btn && btnText) {
-      if (this.isHandsetLifted) {
-        btnText.innerText = this.t('btnDropHandset');
-        btn.classList.add('active');
-      } else {
-        btnText.innerText = this.t('btnLiftHandset');
-        btn.classList.remove('active');
-      }
     }
   }
 
@@ -391,14 +318,6 @@ class BlueprintApp {
       });
     });
 
-    // Handset Toggle Button
-    const toggleHandsetBtn = document.getElementById('btn-toggle-handset');
-    if (toggleHandsetBtn) {
-      toggleHandsetBtn.addEventListener('click', () => {
-        this.toggleHandset();
-      });
-    }
-
     // X-Ray Toggle Button
     const xrayBtn = document.getElementById('btn-toggle-xray');
     if (xrayBtn) {
@@ -417,14 +336,10 @@ class BlueprintApp {
       });
     }
 
-    // Soundboard UI buttons (K1-K5)
+    // Sound card play buttons (one per key)
     document.querySelectorAll('.sound-play-btn').forEach(btn => {
       btn.addEventListener('click', () => {
-        const key = parseInt(btn.dataset.key);
-        if (!this.isHandsetLifted) {
-          this.toggleHandset(); // Auto-lift handset for convenience
-        }
-        this.handleButtonTrigger(key.toString());
+        this.handleButtonTrigger(btn.dataset.key);
       });
     });
 
@@ -449,7 +364,7 @@ class BlueprintApp {
     document.querySelectorAll('.file-input-k').forEach(input => {
       input.addEventListener('change', async (e) => {
         const file = e.target.files[0];
-        const key = parseInt(input.dataset.key);
+        const key = input.dataset.key;
         if (file) {
           try {
             await this.audio.loadCustomAudio(key, file);
@@ -489,8 +404,6 @@ class BlueprintApp {
   }
 
   initUI() {
-    this.updateHUDPowerStatus();
-    this.updateHandsetButtonUI();
     this.updateContextInfo();
     this.updateChecklistProgress();
   }

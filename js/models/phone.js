@@ -1,13 +1,12 @@
 import * as THREE from 'https://esm.sh/three@0.160.0';
+import { KEYS } from '../hardware.js';
 
 /**
- * Procedural 3D model of the classic landline telephone.
- * - Side-by-Side Layout: Handset cradle on the LEFT, Keypad on the RIGHT
- * - ZERO superposition: Keypad buttons are 100% visible and accessible at all times
- * - Handset resting proudly ON TOP of raised cradle supports with exact pitch angle (NO clipping/sinking!)
- * - Clean buttons with NO "K" text, showing large crisp numbers and distinct colored borders
- * - Mechanical hook switch plungers in the left cradle pocket
- * - Dynamic coiled cord that stretches smoothly when handset is lifted
+ * Procedural 3D model of the recycled phone case.
+ * - Side-by-side layout: handset resting on the cradle on the LEFT, keypad on the RIGHT
+ * - All 10 digit keys (1-9, 0) are triggers, each with its own color accent (no text clutter)
+ * - The 8 ohm speaker sits in the handset earpiece; the status LED is on the case
+ * - Pressed keys light up in their color while their clip plays
  */
 
 export class PhoneModel {
@@ -17,21 +16,18 @@ export class PhoneModel {
     this.group.name = "PhoneModel";
 
     // State
-    this.isHandsetLifted = false;
     this.isXRayMode = false;
     this.interactiveButtons = [];
     this.buttonsMap = {};
-    this.plungers = [];
     this.soundWaves = [];
+    this.activeKey = null;    // key currently highlighted (playing), or null
+    this.ledBlinkTime = 0;
 
-    // Distinct signal colors for trigger keys 1 to 5
-    this.triggerColors = {
-      '1': { hex: 0x10b981, css: '#10b981', name: 'Emerald Green' },
-      '2': { hex: 0x3b82f6, css: '#3b82f6', name: 'Electric Blue' },
-      '3': { hex: 0x8b5cf6, css: '#8b5cf6', name: 'Purple' },
-      '4': { hex: 0xf59e0b, css: '#f59e0b', name: 'Amber Orange' },
-      '5': { hex: 0xef4444, css: '#ef4444', name: 'Crimson Red' }
-    };
+    // Signal colors for the 10 trigger keys (same colors as the wires in the circuit view)
+    this.triggerColors = {};
+    KEYS.forEach(k => {
+      this.triggerColors[k.key] = { hex: k.color, css: k.css };
+    });
 
     // Materials - Pure White Blueprint Aesthetic
     this.initMaterials();
@@ -39,7 +35,7 @@ export class PhoneModel {
     // Build Sub-assemblies
     this.buildBase();
     this.buildKeypad();
-    this.buildHookSwitch();
+    this.buildStatusLed();
     this.buildHandset();
     this.buildCoiledCord();
     this.buildAcousticWaves();
@@ -190,6 +186,7 @@ export class PhoneModel {
 
     plateMesh.position.set(3.6, 4.65, 0.8);
     plateMesh.rotation.x = slopeAngle;
+    this.keypadPlate = plateMesh;
     this.addEdgeLines(plateMesh, 0x94a3b8);
     this.keypadGroup.add(plateMesh);
 
@@ -209,13 +206,13 @@ export class PhoneModel {
 
     buttonRows.forEach((row, rIdx) => {
       row.forEach((char, cIdx) => {
-        const isTrigger = ['1', '2', '3', '4', '5'].includes(char);
+        const isTrigger = Boolean(this.triggerColors[char]);
         const triggerInfo = this.triggerColors[char];
 
         const btnGroup = new THREE.Group();
         btnGroup.name = `Button_${char}`;
 
-        // Distinct color accent rim under trigger buttons 1 to 5
+        // Distinct color accent rim under each trigger key
         if (isTrigger && triggerInfo) {
           const accentRimGeom = new THREE.BoxGeometry(btnWidth + 0.25, 0.15, btnDepth + 0.25);
           const accentRimMat = new THREE.MeshStandardMaterial({
@@ -263,7 +260,8 @@ export class PhoneModel {
           triggerInfo: triggerInfo,
           keyNumber: parseInt(char) || null,
           group: btnGroup,
-          baseY: plateHeight / 2 + 0.05
+          baseY: plateHeight / 2 + 0.05,
+          mat: btnMat
         };
 
         this.interactiveButtons.push(btnMesh);
@@ -331,60 +329,19 @@ export class PhoneModel {
     return texture;
   }
 
-  buildHookSwitch() {
-    this.hookSwitchGroup = new THREE.Group();
-    this.hookSwitchGroup.name = "HookSwitch";
+  buildStatusLed() {
+    // Status LED in the top-right corner of the keypad plate (blinks while a clip plays)
+    const bezelGeom = new THREE.CylinderGeometry(0.42, 0.42, 0.2, 20);
+    const bezel = new THREE.Mesh(bezelGeom, this.buttonMat);
+    bezel.position.set(4.6, 0.6, -3.15);
+    this.addEdgeLines(bezel, 0x94a3b8);
+    this.keypadPlate.add(bezel);
 
-    // Mechanical hook switch plungers in left cradle pocket at X = -5.5, Z = -5.6
-    const plungerGeom = new THREE.CylinderGeometry(0.32, 0.38, 1.2, 16);
-    const plungerMat = new THREE.MeshStandardMaterial({
-      color: 0xf8fafc,
-      roughness: 0.2,
-      metalness: 0.1
-    });
-
-    [-0.8, 0.8].forEach((xOffset) => {
-      const plunger = new THREE.Mesh(plungerGeom, plungerMat);
-      plunger.position.set(-5.5 + xOffset, 6.35, -5.6);
-      plunger.castShadow = true;
-      this.addEdgeLines(plunger, 0x0ea5e9);
-      this.hookSwitchGroup.add(plunger);
-      this.plungers.push(plunger);
-    });
-
-    // Switch box underneath
-    const switchBoxGeom = new THREE.BoxGeometry(2.4, 1.0, 1.2);
-    const switchBoxMat = new THREE.MeshStandardMaterial({
-      color: 0x1e293b,
-      roughness: 0.5
-    });
-    this.switchBox = new THREE.Mesh(switchBoxGeom, switchBoxMat);
-    this.switchBox.position.set(-5.5, 5.4, -5.6);
-
-    // Indicator LED
-    const ledGeom = new THREE.SphereGeometry(0.2, 16, 16);
-    this.switchLedMat = new THREE.MeshBasicMaterial({ color: 0x64748b });
-    this.switchLed = new THREE.Mesh(ledGeom, this.switchLedMat);
-    this.switchLed.position.set(0, 0.6, 0);
-    this.switchBox.add(this.switchLed);
-
-    this.hookSwitchGroup.add(this.switchBox);
-    this.group.add(this.hookSwitchGroup);
-
-    this.updatePlungers(false);
-  }
-
-  updatePlungers(isLifted) {
-    // When lifted: plungers spring up to y = 7.1
-    // When docked: plungers depress to y = 6.35
-    const targetY = isLifted ? 7.1 : 6.35;
-    this.plungers.forEach(p => {
-      p.position.y = targetY;
-    });
-
-    if (this.switchLedMat) {
-      this.switchLedMat.color.setHex(isLifted ? 0x10b981 : 0x64748b);
-    }
+    const ledGeom = new THREE.SphereGeometry(0.3, 16, 16);
+    this.ledMat = new THREE.MeshBasicMaterial({ color: 0x7f1d1d });
+    this.statusLed = new THREE.Mesh(ledGeom, this.ledMat);
+    this.statusLed.position.set(0, 0.12, 0);
+    bezel.add(this.statusLed);
   }
 
   buildHandset() {
@@ -464,15 +421,9 @@ export class PhoneModel {
     grommet.rotation.x = Math.PI / 2;
     this.handsetGroup.add(grommet);
 
-    // Interactive clicking
-    this.handsetGroup.traverse(child => {
-      if (child.isMesh) {
-        child.userData = { isHandset: true };
-      }
-    });
-
-    // Position docked on left side with correct elevation and pitch angle
-    this.dockHandsetImmediate();
+    // Resting on the cradle (left side) with the same pitch as the case slope
+    this.handsetGroup.position.set(-5.5, 6.90, 0.0);
+    this.handsetGroup.rotation.set(0.232, 0, 0);
     this.group.add(this.handsetGroup);
   }
 
@@ -539,7 +490,7 @@ export class PhoneModel {
     const pointsPerCoil = 8;
     const totalPoints = numCoils * pointsPerCoil;
     const coilRadius = 0.5;
-    const sag = this.isHandsetLifted ? 2.5 : 3.5;
+    const sag = 3.5;
 
     for (let i = 0; i <= totalPoints; i++) {
       const t = i / totalPoints;
@@ -600,6 +551,18 @@ export class PhoneModel {
   }
 
   updateWaves(delta) {
+    // Blink the status LED while a key is active (playing)
+    if (this.ledMat) {
+      if (this.activeKey) {
+        this.ledBlinkTime += delta;
+        const on = Math.floor(this.ledBlinkTime / 0.15) % 2 === 0;
+        this.ledMat.color.setHex(on ? 0xef4444 : 0x7f1d1d);
+      } else {
+        this.ledBlinkTime = 0;
+        this.ledMat.color.setHex(0x7f1d1d);
+      }
+    }
+
     this.soundWaves.forEach(ring => {
       if (ring.userData.active) {
         ring.userData.progress += delta * 1.8;
@@ -618,16 +581,6 @@ export class PhoneModel {
     });
   }
 
-  dockHandsetImmediate() {
-    this.isHandsetLifted = false;
-    // Exactly elevated on top of cradle supports:
-    // Y = 6.90 gives ample +1.2 units clearance above base, resting caps on cradle saddles
-    // Pitch angle rotation.x = +0.232 rad (13.3°) matches the exact front-to-back slope
-    this.handsetGroup.position.set(-5.5, 6.90, 0.0);
-    this.handsetGroup.rotation.set(0.232, 0, 0);
-    this.updatePlungers(false);
-  }
-
   animateButtonPress(char, onComplete) {
     const btnMesh = this.buttonsMap[char];
     if (!btnMesh) return;
@@ -643,45 +596,20 @@ export class PhoneModel {
     }, 120);
   }
 
-  setHandsetLifted(lifted, onComplete) {
-    this.isHandsetLifted = lifted;
-    this.updatePlungers(lifted);
-
-    // Docked: Elevated on left cradle saddles (Y = 6.90, pitch = 0.232 rad)
-    // Lifted: Hovering comfortably in air
-    const targetPos = lifted
-      ? new THREE.Vector3(-8.5, 14.5, -1.0)
-      : new THREE.Vector3(-5.5, 6.90, 0.0);
-
-    const targetRot = lifted
-      ? new THREE.Vector3(0.42, 0.35, -0.15)
-      : new THREE.Vector3(0.232, 0, 0);
-
-    const startPos = this.handsetGroup.position.clone();
-    const startRot = this.handsetGroup.rotation.clone();
-    const startTime = performance.now();
-    const duration = 450;
-
-    const step = (currentTime) => {
-      const elapsed = currentTime - startTime;
-      const progress = Math.min(1, elapsed / duration);
-      const ease = 1 - Math.pow(1 - progress, 3);
-
-      this.handsetGroup.position.lerpVectors(startPos, targetPos, ease);
-      this.handsetGroup.rotation.x = THREE.MathUtils.lerp(startRot.x, targetRot.x, ease);
-      this.handsetGroup.rotation.y = THREE.MathUtils.lerp(startRot.y, targetRot.y, ease);
-      this.handsetGroup.rotation.z = THREE.MathUtils.lerp(startRot.z, targetRot.z, ease);
-
-      this.updateCoiledCord();
-
-      if (progress < 1) {
-        requestAnimationFrame(step);
-      } else {
-        if (onComplete) onComplete();
-      }
-    };
-
-    requestAnimationFrame(step);
+  // Light up a trigger key in its own color while its clip plays (null clears the highlight)
+  setActiveKey(char) {
+    if (this.activeKey && this.buttonsMap[this.activeKey]) {
+      const prev = this.buttonsMap[this.activeKey].userData.mat;
+      prev.emissive.setHex(0x000000);
+      prev.emissiveIntensity = 0;
+    }
+    this.activeKey = null;
+    const btn = char != null ? this.buttonsMap[char] : null;
+    if (btn && btn.userData.isTrigger) {
+      btn.userData.mat.emissive.setHex(btn.userData.triggerInfo.hex);
+      btn.userData.mat.emissiveIntensity = 0.55;
+      this.activeKey = char;
+    }
   }
 
   toggleXRayMode(enabled) {
