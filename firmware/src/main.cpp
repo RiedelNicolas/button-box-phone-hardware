@@ -6,6 +6,7 @@
  *
  *  - Press while idle           -> plays that key's file to the end.
  *  - Any press during playback  -> only stops playback (it does not start another clip).
+ *                                 After a stop, presses are ignored until all keys are released.
  *  - LED                        -> blinks while audio plays, off when idle.
  *  - Boot                       -> plays /beep.wav (3-note ascending chime).
  *
@@ -83,6 +84,10 @@ static const uint32_t I2S_DMA_FRAMES = 16 * 512;
 static uint32_t eofAtMs = 0;       // millis() when the library reported end of file
 static uint32_t drainMs = 0;       // DMA drain time for the clip that just ended (0 = none)
 
+// After a stop, presses are ignored until every key is released, so pressing two keys at once
+// during playback stops the clip instead of stopping it and immediately starting another one.
+static bool waitForAllReleased = false;
+
 // Called by ESP32-audioI2S (from audio.loop()) when a file has been read to the end.
 void audio_eof_mp3(const char *info) {
   uint32_t rate = audio.getSampleRate();
@@ -122,6 +127,7 @@ static void stopPlayback() {
   // stopSong() does not flush the I2S DMA queue; zero it so the stop is immediate.
   i2s_zero_dma_buffer((i2s_port_t)audio.getI2sPort());
   drainMs = 0;
+  waitForAllReleased = true;
   Serial.println("[audio] stopped by button press");
 }
 
@@ -129,6 +135,10 @@ static void stopPlayback() {
 static void onButtonPressed(size_t index) {
   const ButtonMap &b = BUTTONS[index];
   Serial.printf("[button] key %c (GPIO %u) pressed\n", b.key, b.pin);
+  if (waitForAllReleased) {
+    Serial.println("[button] ignored: release all keys after a stop");
+    return;
+  }
   if (isPlaying(millis())) {
     stopPlayback();  // any press during playback only stops it
     return;
@@ -137,6 +147,7 @@ static void onButtonPressed(size_t index) {
 }
 
 static void updateButtons(uint32_t now) {
+  bool allReleased = true;
   for (size_t i = 0; i < NUM_BUTTONS; i++) {
     ButtonState &s = buttonStates[i];
     bool reading = digitalRead(BUTTONS[i].pin);
@@ -150,6 +161,10 @@ static void updateButtons(uint32_t now) {
         onButtonPressed(i);
       }
     }
+    if (s.stableState == LOW) allReleased = false;
+  }
+  if (waitForAllReleased && allReleased) {
+    waitForAllReleased = false;
   }
 }
 
