@@ -28,12 +28,12 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: 20
+          node-version: 24
 
       - name: Validate JavaScript syntax
         run: |
           for f in js/*.js js/models/*.js; do
-            cat "$f" | node --input-type=module -c
+            node --input-type=module -c < "$f"
             echo "✓ $f is valid"
           done
 
