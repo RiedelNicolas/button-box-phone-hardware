@@ -127,7 +127,11 @@ class BlueprintApp {
       activeObjects = [...this.breadboardModel.interactivePushbuttons];
     }
 
-    const intersects = this.sceneManager.raycaster.intersectObjects(activeObjects, true);
+    // Only solid meshes count: the outline LineSegments children use the raycaster's 1-unit line
+    // threshold and would otherwise catch clicks meant for the key behind them.
+    const intersects = this.sceneManager.raycaster
+      .intersectObjects(activeObjects, true)
+      .filter(hit => hit.object.isMesh);
 
     if (intersects.length > 0) {
       let hit = intersects[0].object;
