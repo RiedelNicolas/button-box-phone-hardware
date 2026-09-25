@@ -15,7 +15,7 @@ const VIEW_CAMERAS = {
 
 // Short description shown in the viewport for each 3D view
 const VIEW_CONTEXT = {
-  phone: '<strong>View: Complete Phone</strong> — Click keys 1-9 or 0 to play that key\'s tone. The key lights up and the LED blinks while it plays.',
+  phone: '<strong>View: Complete Phone</strong> — Click keys 1-9 or 0 to play that key\'s tone; a click while a tone plays stops it. * and # are not wired.',
   breadboard: '<strong>View: Breadboard Circuit</strong> — ESP32 dev board, MAX98357A amplifier, 8 Ω speaker, LED and 10 push buttons. Click a button to test it.',
   modding: '<strong>View: Internal Layout</strong> — Boards on standoffs inside the phone case, one wire per key, speaker in the handset, USB power through the rear panel.'
 };
@@ -25,6 +25,7 @@ class BlueprintApp {
     this.activeView = 'phone'; // 'phone', 'breadboard', 'modding'
     this.isXRay = false;
     this.activeKey = null;     // key whose clip is playing (demo state, also used by tests)
+    this.playToken = 0;        // incremented on every play, guards stale onEnded callbacks
 
     this.initAudio();
     this.init3D();
@@ -157,34 +158,41 @@ class BlueprintApp {
     }
   }
 
-  // Plays the clip of a trigger key and highlights it (3D key, sound card, LED) while it plays
+  // A trigger key press, following the firmware rules: while idle it plays the key's clip and
+  // highlights it (3D key, sound card, LED); while a clip is playing it ONLY stops playback.
+  // Returns 'played', 'stopped' or null (not a trigger key).
   playKey(char) {
     const info = KEY_BY_CHAR[char];
-    if (!info) return false;
+    if (!info) return null;
+    if (this.audio.isPlaying()) {
+      this.audio.stop(); // its onEnded callback clears the highlight
+      return 'stopped';
+    }
+    // Each play gets a token; an onEnded from an older (stopped or replaced) clip must not
+    // clear the state of the clip that is playing now.
+    const token = ++this.playToken;
     if (this.activeKey) this.unhighlightTrackInUI(this.activeKey);
     this.activeKey = char;
     this.phoneModel.setActiveKey(char);
     this.highlightTrackInUI(char);
     this.phoneModel.triggerSoundWaveAnimation();
     this.audio.playKey(char, () => {
+      if (token !== this.playToken) return; // stale callback
       this.unhighlightTrackInUI(char);
-      if (this.activeKey === char) {
-        this.activeKey = null;
-        this.phoneModel.setActiveKey(null);
-      }
+      this.activeKey = null;
+      this.phoneModel.setActiveKey(null);
     });
-    return true;
+    return 'played';
   }
 
   handleButtonTrigger(char) {
     this.phoneModel.animateButtonPress(char);
     const info = KEY_BY_CHAR[char];
-    if (info) {
-      this.playKey(char);
+    if (!info) return; // * and # are not wired: press animation only, no sound
+    if (this.playKey(char) === 'played') {
       this.showToast(`🔊 Key ${char} (GPIO ${info.gpio}) → ${info.file}`);
     } else {
-      // * and # are not wired: just a keypad beep
-      this.audio.playDTMF(char, 0.2);
+      this.showToast(`⏹ Key ${char} pressed during playback → stopped`);
     }
   }
 
@@ -192,8 +200,11 @@ class BlueprintApp {
     const info = KEY_BY_CHAR[char];
     if (!info) return;
     this.breadboardModel.animateButtonPress(char);
-    this.playKey(char);
-    this.showToast(`⚡ GPIO ${info.gpio} pulled LOW → key ${char} → ${info.file}`);
+    if (this.playKey(char) === 'played') {
+      this.showToast(`⚡ GPIO ${info.gpio} pulled LOW → key ${char} → ${info.file}`);
+    } else {
+      this.showToast(`⏹ GPIO ${info.gpio} pulled LOW during playback → stopped`);
+    }
   }
 
   switchView(viewName) {

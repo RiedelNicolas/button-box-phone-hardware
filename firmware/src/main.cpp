@@ -6,6 +6,8 @@
  *
  *  - Press while idle           -> plays that key's file to the end.
  *  - Any press during playback  -> only stops playback (it does not start another clip).
+ *                                 After a stop, presses are ignored until the keys pressed
+ *                                 for that stop are released (see press_lockout.h).
  *  - LED                        -> blinks while audio plays, off when idle.
  *  - Boot                       -> plays /beep.wav (3-note ascending chime).
  *
@@ -14,6 +16,7 @@
 #include <Arduino.h>
 #include <LittleFS.h>
 #include "Audio.h"  // ESP32-audioI2S
+#include "press_lockout.h"
 
 // ---------------------------------------------------------------------------
 // Editable configuration
@@ -75,6 +78,38 @@ static bool wasPlaying = false;
 static bool ledOn = false;
 static uint32_t lastLedToggle = 0;
 
+// ESP32-audioI2S 3.0.12 clears isRunning() as soon as it has read the end of the file, but the
+// I2S DMA ring (16 buffers x 512 frames, set in the library constructor) can still hold up to
+// 8192 frames of audio: about 512 ms at 16 kHz. We treat the clip as playing until that queue
+// has drained, and flush the queue on a stop so the sound cuts immediately.
+static const uint32_t I2S_DMA_FRAMES = 16 * 512;
+static uint32_t eofAtMs = 0;       // millis() when the library reported end of file
+static uint32_t drainMs = 0;       // DMA drain time for the clip that just ended (0 = none)
+
+// After a stop, presses are ignored until the keys involved in the stop are released, so pressing
+// two keys at once during playback stops the clip instead of stopping it and starting another.
+// Keys held down from before the stop (held at boot, stuck) do not block it; see press_lockout.h.
+static PressLockout lockout = {0, 0};
+static_assert(sizeof(BUTTONS) / sizeof(BUTTONS[0]) <= 16, "press lockout mask holds 16 keys");
+
+// Called by ESP32-audioI2S (from audio.loop()) when a file has been read to the end.
+void audio_eof_mp3(const char *info) {
+  uint32_t rate = audio.getSampleRate();
+  if (rate == 0) rate = 16000;
+  eofAtMs = millis();
+  drainMs = (I2S_DMA_FRAMES * 1000UL + rate - 1) / rate + 20;  // + small margin
+  Serial.printf("[audio] end of file %s (DMA drains in %lu ms)\n", info, (unsigned long)drainMs);
+}
+
+// True while audio is actually coming out of the speaker (decoding, or DMA still draining).
+static bool isPlaying(uint32_t now) {
+  if (audio.isRunning()) return true;
+  if (drainMs == 0) return false;
+  if ((now - eofAtMs) < drainMs) return true;
+  drainMs = 0;  // window over: clear it so a millis() wraparound (~49.7 days) cannot re-enter it
+  return false;
+}
+
 // Starts playing a file. Returns false (and logs) if the file is missing or cannot be opened.
 static bool playFile(const char *path) {
   if (!fsMounted) {
@@ -89,12 +124,17 @@ static bool playFile(const char *path) {
     Serial.printf("[audio] could not open/decode: %s\n", path);
     return false;
   }
+  drainMs = 0;  // a new clip is running; forget the previous end-of-file drain window
   Serial.printf("[audio] playing %s\n", path);
   return true;
 }
 
-static void stopPlayback() {
+static void stopPlayback(size_t index) {
   audio.stopSong();
+  // stopSong() does not flush the I2S DMA queue; zero it so the stop is immediate.
+  i2s_zero_dma_buffer((i2s_port_t)audio.getI2sPort());
+  drainMs = 0;
+  lockoutOnStop(&lockout, (uint8_t)index, millis());
   Serial.println("[audio] stopped by button press");
 }
 
@@ -102,14 +142,19 @@ static void stopPlayback() {
 static void onButtonPressed(size_t index) {
   const ButtonMap &b = BUTTONS[index];
   Serial.printf("[button] key %c (GPIO %u) pressed\n", b.key, b.pin);
-  if (audio.isRunning()) {
-    stopPlayback();  // any press during playback only stops it
+  if (lockoutOnPress(&lockout, (uint8_t)index)) {
+    Serial.println("[button] ignored: release the keys pressed for the last stop first");
+    return;
+  }
+  if (isPlaying(millis())) {
+    stopPlayback(index);  // any press during playback only stops it
     return;
   }
   playFile(b.file);
 }
 
 static void updateButtons(uint32_t now) {
+  uint16_t heldMask = 0;
   for (size_t i = 0; i < NUM_BUTTONS; i++) {
     ButtonState &s = buttonStates[i];
     bool reading = digitalRead(BUTTONS[i].pin);
@@ -123,7 +168,9 @@ static void updateButtons(uint32_t now) {
         onButtonPressed(i);
       }
     }
+    if (s.stableState == LOW) heldMask |= (uint16_t)(1u << i);
   }
+  lockoutUpdate(&lockout, heldMask, now);
 }
 
 static void updateLed(uint32_t now, bool playing) {
@@ -173,12 +220,15 @@ void setup() {
 }
 
 void loop() {
-  audio.loop();  // feeds the I2S output; must run often, so no delay() in this loop
+  // Refills the library's input buffer from the file; must run often, so no delay() in this loop.
+  // Decoding and i2s_write() run in the library's own audio task (ESP32-audioI2S 3.0.12), so this
+  // call never waits on the I2S DMA queue and the loop never blocks.
+  audio.loop();
 
   uint32_t now = millis();
   updateButtons(now);
 
-  bool playing = audio.isRunning();
+  bool playing = isPlaying(now);
   if (wasPlaying && !playing) {
     Serial.println("[audio] idle");
   }
