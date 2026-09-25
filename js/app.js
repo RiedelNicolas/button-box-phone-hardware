@@ -15,7 +15,7 @@ const VIEW_CAMERAS = {
 
 // Short description shown in the viewport for each 3D view
 const VIEW_CONTEXT = {
-  phone: '<strong>View: Complete Phone</strong> — Click keys 1-9 or 0 to play that key\'s tone. The key lights up and the LED blinks while it plays.',
+  phone: '<strong>View: Complete Phone</strong> — Click keys 1-9 or 0 to play that key\'s tone; a click while a tone plays stops it. * and # are not wired.',
   breadboard: '<strong>View: Breadboard Circuit</strong> — ESP32 dev board, MAX98357A amplifier, 8 Ω speaker, LED and 10 push buttons. Click a button to test it.',
   modding: '<strong>View: Internal Layout</strong> — Boards on standoffs inside the phone case, one wire per key, speaker in the handset, USB power through the rear panel.'
 };
@@ -157,11 +157,16 @@ class BlueprintApp {
     }
   }
 
-  // Plays the clip of a trigger key and highlights it (3D key, sound card, LED) while it plays
+  // A trigger key press, following the firmware rules: while idle it plays the key's clip and
+  // highlights it (3D key, sound card, LED); while a clip is playing it ONLY stops playback.
+  // Returns 'played', 'stopped' or null (not a trigger key).
   playKey(char) {
     const info = KEY_BY_CHAR[char];
-    if (!info) return false;
-    if (this.activeKey) this.unhighlightTrackInUI(this.activeKey);
+    if (!info) return null;
+    if (this.audio.isPlaying()) {
+      this.audio.stop(); // its onEnded callback clears the highlight
+      return 'stopped';
+    }
     this.activeKey = char;
     this.phoneModel.setActiveKey(char);
     this.highlightTrackInUI(char);
@@ -173,18 +178,17 @@ class BlueprintApp {
         this.phoneModel.setActiveKey(null);
       }
     });
-    return true;
+    return 'played';
   }
 
   handleButtonTrigger(char) {
     this.phoneModel.animateButtonPress(char);
     const info = KEY_BY_CHAR[char];
-    if (info) {
-      this.playKey(char);
+    if (!info) return; // * and # are not wired: press animation only, no sound
+    if (this.playKey(char) === 'played') {
       this.showToast(`🔊 Key ${char} (GPIO ${info.gpio}) → ${info.file}`);
     } else {
-      // * and # are not wired: just a keypad beep
-      this.audio.playDTMF(char, 0.2);
+      this.showToast(`⏹ Key ${char} pressed during playback → stopped`);
     }
   }
 
@@ -192,8 +196,11 @@ class BlueprintApp {
     const info = KEY_BY_CHAR[char];
     if (!info) return;
     this.breadboardModel.animateButtonPress(char);
-    this.playKey(char);
-    this.showToast(`⚡ GPIO ${info.gpio} pulled LOW → key ${char} → ${info.file}`);
+    if (this.playKey(char) === 'played') {
+      this.showToast(`⚡ GPIO ${info.gpio} pulled LOW → key ${char} → ${info.file}`);
+    } else {
+      this.showToast(`⏹ GPIO ${info.gpio} pulled LOW during playback → stopped`);
+    }
   }
 
   switchView(viewName) {
