@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Teléfono Soundboard - Technical Blueprint Stylesheet
+   Button Box Phone - Technical Blueprint Stylesheet
    Theme: Pristine Architectural White / Clean Industrial CAD Blueprint
    ========================================================================== */
 
@@ -126,95 +126,6 @@ body {
   padding: 2px 6px;
   border-radius: 4px;
   color: var(--text-muted);
-}
-
-/* Header Right: Language Switcher & Status Badge */
-.header-actions {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-/* Language Selector Control */
-.lang-selector-group {
-  display: inline-flex;
-  align-items: center;
-  background: #f1f5f9;
-  border: 1px solid var(--border-color);
-  border-radius: 20px;
-  padding: 3px;
-  gap: 2px;
-}
-
-.lang-btn {
-  border: none;
-  background: transparent;
-  padding: 5px 12px;
-  border-radius: 16px;
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-  font-weight: 700;
-  color: var(--text-muted);
-  cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.lang-btn:hover {
-  color: var(--text-main);
-}
-
-.lang-btn.active {
-  background: #ffffff;
-  color: var(--text-main);
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12);
-}
-
-.status-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 14px;
-  border-radius: 20px;
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
-  font-weight: 600;
-  border: 1px solid var(--border-color);
-  transition: all 0.3s ease;
-}
-
-.status-badge.standby {
-  background: #f1f5f9;
-  color: var(--text-muted);
-  border-color: #cbd5e1;
-}
-
-.status-badge.live {
-  background: #ecfdf5;
-  color: var(--accent-green);
-  border-color: #a7f3d0;
-  box-shadow: 0 0 12px rgba(16, 185, 129, 0.25);
-}
-
-.status-badge .dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-}
-
-.status-badge .dot.standby {
-  background: #94a3b8;
-}
-
-.status-badge .dot.live {
-  background: var(--accent-green);
-  box-shadow: 0 0 8px var(--accent-green);
-  animation: pulse 1.5s infinite;
-}
-
-@keyframes pulse {
-  0% { transform: scale(0.95); opacity: 0.8; }
-  50% { transform: scale(1.2); opacity: 1; }
-  100% { transform: scale(0.95); opacity: 0.8; }
 }
 
 /* --------------------------------------------------------------------------
@@ -592,6 +503,23 @@ body {
 .pin-tag.spk { background: #e0f2fe; color: #0284c7; }
 .pin-tag.trigger { background: #dcfce7; color: #15803d; }
 
+/* Plain bullet list inside cards */
+.plain-list {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+  padding-left: 18px;
+}
+
+code {
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 0 4px;
+}
+
 /* Plan Execution Checklist */
 .progress-container {
   margin-bottom: 20px;
@@ -706,12 +634,23 @@ body {
   border: 2px solid;
 }
 
-/* Color badges matching 3D trigger buttons */
-.key-badge.k1 { background: #ecfdf5; border-color: #10b981; color: #047857; }
-.key-badge.k2 { background: #eff6ff; border-color: #3b82f6; color: #1d4ed8; }
-.key-badge.k3 { background: #f5f3ff; border-color: #8b5cf6; color: #6d28d9; }
-.key-badge.k4 { background: #fffbeb; border-color: #f59e0b; color: #b45309; }
-.key-badge.k5 { background: #fef2f2; border-color: #ef4444; color: #b91c1c; }
+/* Key badges use the same color as the 3D key and its wire (--key-color set inline) */
+.key-badge {
+  border-color: var(--key-color, var(--border-darker));
+  color: var(--text-main);
+  background: color-mix(in srgb, var(--key-color, #ffffff) 10%, #ffffff);
+}
+
+.key-badge.small {
+  width: 26px;
+  height: 26px;
+  font-size: 0.8rem;
+  border-radius: 6px;
+}
+
+.pin-table td {
+  font-family: var(--font-mono);
+}
 
 .sound-info h5 {
   font-size: 0.84rem;

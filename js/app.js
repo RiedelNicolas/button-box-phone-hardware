@@ -4,67 +4,63 @@ import SoundboardAudioEngine from './audio.js';
 import { PhoneModel } from './models/phone.js';
 import { BreadboardModel } from './models/breadboard.js';
 import { ModdingModel } from './models/modding.js';
-import { translations } from './i18n.js';
-import { KEY_BY_CHAR } from './hardware.js';
+import { KEYS, KEY_BY_CHAR } from './hardware.js';
+
+// Short description shown in the viewport for each 3D view
+const VIEW_CONTEXT = {
+  phone: '<strong>View: Complete Phone</strong> — Click keys 1-9 or 0 to play that key\'s tone. The key lights up and the LED blinks while it plays.',
+  breadboard: '<strong>View: Breadboard Circuit</strong> — ESP32 dev board, MAX98357A amplifier, 8 Ω speaker, LED and 10 push buttons. Click a button to test it.',
+  modding: '<strong>View: Internal Layout</strong> — Boards on standoffs inside the phone case, one wire per key, speaker in the handset, USB power through the rear panel.'
+};
 
 class BlueprintApp {
   constructor() {
-    this.currentLang = localStorage.getItem('blueprint_lang') || 'en';
     this.activeView = 'phone'; // 'phone', 'breadboard', 'modding'
     this.isXRay = false;
     this.activeKey = null;     // key whose clip is playing (demo state, also used by tests)
 
     this.initAudio();
     this.init3D();
-    this.initLanguage();
+    this.renderPinTable();
+    this.renderSoundCards();
     this.initEventListeners();
     this.initUI();
   }
 
-  t(key, params = {}) {
-    const dict = translations[this.currentLang] || translations.en;
-    let str = dict[key] || translations.en[key] || key;
-    for (const [k, v] of Object.entries(params)) {
-      str = str.replace(new RegExp(`\\{${k}\\}`, 'g'), v);
-    }
-    return str;
+  // Keypad pin table in the Wiring tab (from js/hardware.js, same as the firmware)
+  renderPinTable() {
+    const tbody = document.querySelector('#pin-table-keys tbody');
+    if (!tbody) return;
+    tbody.innerHTML = KEYS.map(k => `
+      <tr data-key="${k.key}">
+        <td><span class="key-badge small" style="--key-color: ${k.css}">${k.key}</span></td>
+        <td><strong>GPIO ${k.gpio}</strong></td>
+        <td>GND</td>
+        <td><code>${k.file}</code></td>
+      </tr>`).join('');
   }
 
-  setLanguage(lang) {
-    if (!translations[lang]) return;
-    this.currentLang = lang;
-    localStorage.setItem('blueprint_lang', lang);
-    document.documentElement.lang = lang;
-
-    // Update all static i18n text
-    document.querySelectorAll('[data-i18n]').forEach(el => {
-      const key = el.dataset.i18n;
-      const translated = this.t(key);
-      if (translated.includes('<') && translated.includes('>')) {
-        el.innerHTML = translated;
-      } else {
-        el.innerText = translated;
-      }
-    });
-
-    // Update tooltips
-    document.querySelectorAll('[data-i18n-title]').forEach(el => {
-      const key = el.dataset.i18nTitle;
-      el.title = this.t(key);
-    });
-
-    // Update active button state
-    document.querySelectorAll('.lang-btn').forEach(btn => {
-      btn.classList.toggle('active', btn.dataset.lang === lang);
-    });
-
-    // Update dynamic UI state
-    this.updateContextInfo();
-    this.updateChecklistProgress();
-  }
-
-  initLanguage() {
-    this.setLanguage(this.currentLang);
+  // One card per key in the Sound Test tab
+  renderSoundCards() {
+    const grid = document.getElementById('sound-cards');
+    if (!grid) return;
+    grid.innerHTML = KEYS.map(k => `
+      <div class="sound-card" data-key="${k.key}">
+        <div class="sound-card-left">
+          <div class="key-badge" style="--key-color: ${k.css}">${k.key}</div>
+          <div class="sound-info">
+            <h5>Key ${k.key} · ${k.file}</h5>
+            <p>GPIO ${k.gpio} &bull; <span class="custom-badge" data-key="${k.key}">Test tone ${Math.round(k.freq)} Hz</span></p>
+          </div>
+        </div>
+        <div class="sound-card-right">
+          <label class="btn-upload-label" title="Load a local audio file for this key">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            <input type="file" accept="audio/*" class="file-input-k" data-key="${k.key}" style="display: none;">
+          </label>
+          <button class="btn-sound-play sound-play-btn" data-key="${k.key}" aria-label="Play key ${k.key}">▶</button>
+        </div>
+      </div>`).join('');
   }
 
   initAudio() {
@@ -226,13 +222,7 @@ class BlueprintApp {
     const infoElem = document.getElementById('view-context-info');
     if (!infoElem) return;
 
-    if (this.activeView === 'phone') {
-      infoElem.innerHTML = this.t('contextPhone');
-    } else if (this.activeView === 'breadboard') {
-      infoElem.innerHTML = this.t('contextBreadboard');
-    } else if (this.activeView === 'modding') {
-      infoElem.innerHTML = this.t('contextModding');
-    }
+    infoElem.innerHTML = VIEW_CONTEXT[this.activeView] || '';
   }
 
   focusOnComponent(componentKey) {
@@ -304,13 +294,6 @@ class BlueprintApp {
   }
 
   initEventListeners() {
-    // Language Switcher Buttons
-    document.querySelectorAll('.lang-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        this.setLanguage(btn.dataset.lang);
-      });
-    });
-
     // View Tab buttons
     document.querySelectorAll('.view-tab-btn').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -368,11 +351,11 @@ class BlueprintApp {
         if (file) {
           try {
             await this.audio.loadCustomAudio(key, file);
-            this.showToast(this.t('toastAudioLoaded', { key: key, name: file.name }));
+            this.showToast(`✅ Custom audio loaded for key ${key}: ${file.name}`);
             const badge = document.querySelector(`.custom-badge[data-key="${key}"]`);
-            if (badge) badge.innerText = this.t('soundBadgeCustom');
+            if (badge) badge.innerText = 'Custom file';
           } catch (err) {
-            this.showToast(this.t('toastAudioError', { key: key }));
+            this.showToast(`❌ Could not decode the audio file for key ${key}`);
           }
         }
       });
@@ -395,11 +378,7 @@ class BlueprintApp {
     const text = document.getElementById('execution-progress-text');
     if (bar) bar.style.width = `${percent}%`;
     if (text) {
-      text.innerText = this.t('progressCompleted', {
-        percent: percent,
-        checked: checked,
-        total: total
-      });
+      text.innerText = `${percent}% completed (${checked}/${total} steps)`;
     }
   }
 

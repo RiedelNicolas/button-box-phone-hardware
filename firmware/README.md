@@ -2,8 +2,7 @@
 
 Firmware for the button box phone: an ESP32 dev board inside a recycled phone case. Each of the
 10 keypad keys (1 to 9 and 0) is a rubber push button that plays its own WAV clip through a
-MAX98357A I2S amplifier and an 8 ohm speaker. Power is always on over USB (no battery, no
-power switch).
+MAX98357A I2S amplifier and an 8 ohm speaker. Power is always on over USB.
 
 Behavior:
 
@@ -30,7 +29,7 @@ streaming while the buttons and the LED are serviced.
 | 1 | Resistor 220-330 ohm | In series with the LED. |
 | 1 | USB cable + 5 V USB power adapter (1 A or more recommended) | Always-on power and flashing. |
 | 1 | Recycled phone case | Housing for everything. |
-| - | Hookup wire, solder, hot glue or standoffs | |
+| - | Connection wire, solder, hot glue or standoffs | |
 
 ## Wiring / pinout
 
