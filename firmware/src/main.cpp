@@ -104,7 +104,10 @@ void audio_eof_mp3(const char *info) {
 // True while audio is actually coming out of the speaker (decoding, or DMA still draining).
 static bool isPlaying(uint32_t now) {
   if (audio.isRunning()) return true;
-  return drainMs != 0 && (now - eofAtMs) < drainMs;
+  if (drainMs == 0) return false;
+  if ((now - eofAtMs) < drainMs) return true;
+  drainMs = 0;  // window over: clear it so a millis() wraparound (~49.7 days) cannot re-enter it
+  return false;
 }
 
 // Starts playing a file. Returns false (and logs) if the file is missing or cannot be opened.
