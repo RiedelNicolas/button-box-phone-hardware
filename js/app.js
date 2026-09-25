@@ -25,6 +25,7 @@ class BlueprintApp {
     this.activeView = 'phone'; // 'phone', 'breadboard', 'modding'
     this.isXRay = false;
     this.activeKey = null;     // key whose clip is playing (demo state, also used by tests)
+    this.playToken = 0;        // incremented on every play, guards stale onEnded callbacks
 
     this.initAudio();
     this.init3D();
@@ -167,16 +168,19 @@ class BlueprintApp {
       this.audio.stop(); // its onEnded callback clears the highlight
       return 'stopped';
     }
+    // Each play gets a token; an onEnded from an older (stopped or replaced) clip must not
+    // clear the state of the clip that is playing now.
+    const token = ++this.playToken;
+    if (this.activeKey) this.unhighlightTrackInUI(this.activeKey);
     this.activeKey = char;
     this.phoneModel.setActiveKey(char);
     this.highlightTrackInUI(char);
     this.phoneModel.triggerSoundWaveAnimation();
     this.audio.playKey(char, () => {
+      if (token !== this.playToken) return; // stale callback
       this.unhighlightTrackInUI(char);
-      if (this.activeKey === char) {
-        this.activeKey = null;
-        this.phoneModel.setActiveKey(null);
-      }
+      this.activeKey = null;
+      this.phoneModel.setActiveKey(null);
     });
     return 'played';
   }
