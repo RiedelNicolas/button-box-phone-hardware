@@ -1,5 +1,7 @@
 # Button Box Phone 📞🔊
 
+The site lives at https://funnyphone.nriedel.com.ar.
+
 A recycled phone case turned into a sound box. Each of the 10 keypad keys (1 to 9 and 0) is a
 rubber push button that plays its own short WAV clip. Inside: an **ESP32 dev board**, a
 **MAX98357A I2S amplifier** driving an **8 Ω speaker**, one status **LED**, and always-on
