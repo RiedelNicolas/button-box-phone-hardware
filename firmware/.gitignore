@@ -1,0 +1,5 @@
+.pio/
+.vscode/
+# data/ is the LittleFS source folder: your own audio goes here and is never committed.
+data/*
+!data/.gitkeep

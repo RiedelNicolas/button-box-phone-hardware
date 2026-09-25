@@ -1,7 +1,7 @@
 {
-  "name": "telefono-soundboard-blueprint",
-  "version": "1.0.0",
-  "description": "Interactive 3D Blueprint for the Teléfono Soundboard hardware modding project",
+  "name": "button-box-phone-blueprint",
+  "version": "2.0.0",
+  "description": "Interactive 3D blueprint and ESP32 firmware for the button box phone: 10 keypad keys playing WAV clips through a MAX98357A amplifier",
   "scripts": {
     "start": "python3 -m http.server 8080",
     "serve": "npx serve -l 8080 ."
@@ -10,7 +10,9 @@
     "threejs",
     "hardware",
     "blueprint",
-    "soundboard",
+    "esp32",
+    "max98357a",
+    "i2s",
     "telephone",
     "electronics"
   ],

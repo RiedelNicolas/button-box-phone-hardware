@@ -1,75 +1,60 @@
 import * as THREE from 'https://esm.sh/three@0.160.0';
+import { KEYS, I2S_PINS, LED_GPIO } from '../hardware.js';
 
 /**
- * Procedural 3D model of the Breadboard PoC Circuit (Fase 1).
- * Features:
- * - 400-point breadboard with realistic tie-point grid and power rails (+/-)
- * - MB102 power supply module with DC barrel jack, power switch, and 5V jumpers
- * - JQ6500-16P MP3 module straddling the central DIP channel
- * - 5 tactile pushbuttons (6x6mm) wired to pins K1-K5
- * - Slim 8Ω 1W mini speaker connected to SPK+ and SPK-
- * - Color-coded Dupont jumper wires with catenary curves
+ * Procedural 3D model of the breadboard test circuit.
+ * - Full-size breadboard with tie-point grid and power rails (+/-)
+ * - ESP32 dev board (30-pin DevKit layout) straddling the center channel, powered over USB
+ * - MAX98357A I2S amplifier breakout driving an 8 ohm speaker
+ * - Status LED with series resistor
+ * - 10 push buttons (keypad keys 1-9 and 0), each wired to its GPIO; other leg to GND
+ * Wire colors and GPIO numbers come from ../hardware.js (same table as the firmware).
  */
+
+// ESP32 DevKit (30-pin) header order, starting at the USB end of the board.
+// Back row = left column of the board, front row = right column.
+const BACK_ROW = ['VIN', 'GND', '13', '12', '14', '27', '26', '25', '33', '32', '35', '34', 'VN', 'VP', 'EN'];
+const FRONT_ROW = ['3V3', 'GND', '15', '2', '4', '16', '17', '5', '18', '19', '21', 'RX0', 'TX0', '22', '23'];
+
+const BOARD_TOP = 1.0;          // breadboard surface height
+const ESP_CENTER_X = -7.0;
+const PIN_PITCH = 0.62;
+const HOLE_Z = 3.0;             // breadboard hole row used next to each ESP32 header row
+const AMP_PINS = ['LRC', 'BCLK', 'DIN', 'GAIN', 'SD', 'GND', 'VIN'];
+const AMP_CENTER = new THREE.Vector3(5.0, 1.75, -3.4);
 
 export class BreadboardModel {
   constructor(scene) {
     this.scene = scene;
     this.group = new THREE.Group();
-    this.group.name = "BreadboardPoC";
+    this.group.name = "BreadboardCircuit";
 
     this.interactivePushbuttons = [];
     this.pushbuttonsMap = {};
     this.wires = [];
-    this.isCircuitPowered = true;
 
     this.initMaterials();
     this.buildBreadboard();
-    this.buildMB102Module();
-    this.buildJQ6500Module();
-    this.buildPushbuttons();
+    this.buildESP32Board();
+    this.buildUsbPower();
+    this.buildAmplifier();
     this.buildMiniSpeaker();
-    this.buildDupontJumpers();
+    this.buildStatusLed();
+    this.buildPushbuttons();
+    this.buildWires();
 
     this.scene.add(this.group);
   }
 
   initMaterials() {
-    this.breadboardMat = new THREE.MeshStandardMaterial({
-      color: 0xffffff,
-      roughness: 0.35,
-      metalness: 0.05
-    });
-
-    this.pcbMat = new THREE.MeshStandardMaterial({
-      color: 0x0f172a, // Tech dark blue/black PCB
-      roughness: 0.3,
-      metalness: 0.2
-    });
-
-    this.mb102PcbMat = new THREE.MeshStandardMaterial({
-      color: 0x1e3a8a, // Classic MB102 royal blue PCB
-      roughness: 0.4,
-      metalness: 0.1
-    });
-
-    this.metalPinMat = new THREE.MeshStandardMaterial({
-      color: 0xd1d5db,
-      roughness: 0.2,
-      metalness: 0.85
-    });
-
-    this.goldMat = new THREE.MeshStandardMaterial({
-      color: 0xfbbf24,
-      roughness: 0.25,
-      metalness: 0.8
-    });
-
-    this.edgeLineMat = new THREE.LineBasicMaterial({
-      color: 0x94a3b8,
-      linewidth: 1,
-      transparent: true,
-      opacity: 0.6
-    });
+    this.breadboardMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.35, metalness: 0.05 });
+    this.pcbMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.3, metalness: 0.2 });
+    this.ampPcbMat = new THREE.MeshStandardMaterial({ color: 0x1e3a8a, roughness: 0.4, metalness: 0.1 });
+    this.shieldMat = new THREE.MeshStandardMaterial({ color: 0xcbd5e1, roughness: 0.25, metalness: 0.85 });
+    this.metalPinMat = new THREE.MeshStandardMaterial({ color: 0xd1d5db, roughness: 0.2, metalness: 0.85 });
+    this.goldMat = new THREE.MeshStandardMaterial({ color: 0xfbbf24, roughness: 0.25, metalness: 0.8 });
+    this.headerMat = new THREE.MeshStandardMaterial({ color: 0x111827, roughness: 0.6 });
+    this.edgeLineMat = new THREE.LineBasicMaterial({ color: 0x94a3b8, linewidth: 1, transparent: true, opacity: 0.6 });
   }
 
   addEdgeLines(mesh, color = 0x94a3b8, threshold = 26) {
@@ -81,13 +66,36 @@ export class BreadboardModel {
     return line;
   }
 
+  // Flat text label lying on a surface (canvas texture on a plane)
+  makeLabel(text, { width = 1.2, height = 0.5, color = '#334155', bg = null, font = 'bold 40px monospace' } = {}) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = Math.round(256 * height / width);
+    const ctx = canvas.getContext('2d');
+    if (bg) {
+      ctx.fillStyle = bg;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+    ctx.fillStyle = color;
+    ctx.font = font;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, canvas.width / 2, canvas.height / 2);
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.anisotropy = 4;
+    const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, polygonOffset: true, polygonOffsetFactor: -2 });
+    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(width, height), mat);
+    mesh.rotation.x = -Math.PI / 2;
+    return mesh;
+  }
+
   buildBreadboard() {
     this.boardGroup = new THREE.Group();
 
-    // 400-Point Breadboard: approx 16.5cm x 5.5cm x 0.9cm
-    const width = 22;
-    const depth = 8.5;
-    const height = 1.0;
+    // Full-size breadboard (830 tie-points class)
+    const width = 30;
+    const depth = 10;
+    const height = BOARD_TOP;
 
     const boardGeom = new THREE.BoxGeometry(width, height, depth);
     const boardMesh = new THREE.Mesh(boardGeom, this.breadboardMat);
@@ -97,22 +105,9 @@ export class BreadboardModel {
     this.addEdgeLines(boardMesh);
     this.boardGroup.add(boardMesh);
 
-    // Central trough/groove (standard 0.3" DIP divider)
-    const troughGeom = new THREE.BoxGeometry(width * 0.85, 0.2, 0.6);
-    const troughMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0 });
-    const trough = new THREE.Mesh(troughGeom, troughMat);
-    trough.position.set(1.5, height, 0);
-    this.boardGroup.add(trough);
-
-    // Realistic tie-point hole texture and colored power bus lines
     const faceTex = this.createBreadboardFaceTexture();
-    const faceGeom = new THREE.PlaneGeometry(width * 0.96, depth * 0.94);
-    const faceMat = new THREE.MeshBasicMaterial({
-      map: faceTex,
-      transparent: true,
-      polygonOffset: true,
-      polygonOffsetFactor: -1
-    });
+    const faceGeom = new THREE.PlaneGeometry(width * 0.98, depth * 0.96);
+    const faceMat = new THREE.MeshBasicMaterial({ map: faceTex, transparent: true, polygonOffset: true, polygonOffsetFactor: -1 });
     const faceMesh = new THREE.Mesh(faceGeom, faceMat);
     faceMesh.rotation.x = -Math.PI / 2;
     faceMesh.position.y = height + 0.01;
@@ -122,81 +117,41 @@ export class BreadboardModel {
   }
 
   createBreadboardFaceTexture() {
+    const W = 2048, H = 683;
     const canvas = document.createElement('canvas');
-    canvas.width = 1024;
-    canvas.height = 384;
+    canvas.width = W;
+    canvas.height = H;
     const ctx = canvas.getContext('2d');
 
     ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, 1024, 384);
+    ctx.fillRect(0, 0, W, H);
 
-    // Top power bus lines: Blue (-) and Red (+)
-    ctx.lineWidth = 4;
-    ctx.strokeStyle = '#ef4444'; // Red (+)
-    ctx.beginPath();
-    ctx.moveTo(120, 28);
-    ctx.lineTo(980, 28);
-    ctx.stroke();
+    // Power rails: red (+) and blue (-) at the back and at the front
+    const rails = [[40, '#ef4444'], [95, '#3b82f6'], [H - 95, '#3b82f6'], [H - 40, '#ef4444']];
+    ctx.lineWidth = 5;
+    rails.forEach(([y, color]) => {
+      ctx.strokeStyle = color;
+      ctx.beginPath();
+      ctx.moveTo(90, y + (y < H / 2 ? -14 : 14));
+      ctx.lineTo(W - 90, y + (y < H / 2 ? -14 : 14));
+      ctx.stroke();
+    });
 
-    ctx.strokeStyle = '#3b82f6'; // Blue (-)
-    ctx.beginPath();
-    ctx.moveTo(120, 68);
-    ctx.lineTo(980, 68);
-    ctx.stroke();
-
-    // Bottom power bus lines
-    ctx.strokeStyle = '#3b82f6'; // Blue (-)
-    ctx.beginPath();
-    ctx.moveTo(120, 316);
-    ctx.lineTo(980, 316);
-    ctx.stroke();
-
-    ctx.strokeStyle = '#ef4444'; // Red (+)
-    ctx.beginPath();
-    ctx.moveTo(120, 356);
-    ctx.lineTo(980, 356);
-    ctx.stroke();
-
-    // Central trough divider line
+    // Center channel
     ctx.fillStyle = '#cbd5e1';
-    ctx.fillRect(100, 186, 890, 12);
+    ctx.fillRect(70, H / 2 - 9, W - 140, 18);
 
-    // Draw tie-point holes grid
+    // Tie-point holes
     ctx.fillStyle = '#475569';
-    const cols = 30;
-    const colStep = (960 - 140) / cols;
-
+    const cols = 60;
+    const colStep = (W - 200) / cols;
     for (let c = 0; c < cols; c++) {
-      const x = 140 + c * colStep;
-      // Top power rails holes
-      ctx.fillRect(x - 2.5, 25.5, 5, 5);
-      ctx.fillRect(x - 2.5, 65.5, 5, 5);
-
-      // Terminal rows A, B, C, D, E
+      const x = 100 + c * colStep;
+      rails.forEach(([y]) => ctx.fillRect(x - 4, y - 4, 8, 8));
       for (let r = 0; r < 5; r++) {
-        const y = 98 + r * 16;
-        ctx.fillRect(x - 2.5, y - 2.5, 5, 5);
+        ctx.fillRect(x - 4, 150 + r * 30 - 4, 8, 8);
+        ctx.fillRect(x - 4, H / 2 + 42 + r * 30 - 4, 8, 8);
       }
-
-      // Terminal rows F, G, H, I, J
-      for (let r = 0; r < 5; r++) {
-        const y = 212 + r * 16;
-        ctx.fillRect(x - 2.5, y - 2.5, 5, 5);
-      }
-
-      // Bottom power rails holes
-      ctx.fillRect(x - 2.5, 313.5, 5, 5);
-      ctx.fillRect(x - 2.5, 353.5, 5, 5);
-    }
-
-    // Coordinates silkscreen (numbers 1 to 30)
-    ctx.fillStyle = '#94a3b8';
-    ctx.font = '12px monospace';
-    ctx.textAlign = 'center';
-    for (let c = 0; c < cols; c += 5) {
-      const x = 140 + c * colStep;
-      ctx.fillText((c + 1).toString(), x, 92);
-      ctx.fillText((c + 1).toString(), x, 298);
     }
 
     const tex = new THREE.CanvasTexture(canvas);
@@ -204,457 +159,447 @@ export class BreadboardModel {
     return tex;
   }
 
-  buildMB102Module() {
-    this.mb102Group = new THREE.Group();
-    this.mb102Group.name = "MB102_PowerModule";
-
-    // PCB board spanning the left side of the protoboard
-    const pcbGeom = new THREE.BoxGeometry(4.2, 0.25, 8.8);
-    const pcbMesh = new THREE.Mesh(pcbGeom, this.mb102PcbMat);
-    pcbMesh.position.set(-8.8, 1.3, 0);
-    this.addEdgeLines(pcbMesh, 0x60a5fa);
-    this.mb102Group.add(pcbMesh);
-
-    // DC Barrel Jack (5.5 x 2.1 mm)
-    const jackGeom = new THREE.CylinderGeometry(0.8, 0.8, 1.6, 16);
-    const jackMat = new THREE.MeshStandardMaterial({ color: 0x111827 });
-    const jack = new THREE.Mesh(jackGeom, jackMat);
-    jack.rotation.z = Math.PI / 2;
-    jack.position.set(-1.4, 0.8, -2.4);
-    pcbMesh.add(jack);
-
-    // Inner metal pin of barrel jack
-    const pinGeom = new THREE.CylinderGeometry(0.2, 0.2, 1.2, 8);
-    const innerPin = new THREE.Mesh(pinGeom, this.goldMat);
-    innerPin.rotation.z = Math.PI / 2;
-    innerPin.position.set(-0.2, 0, 0);
-    jack.add(innerPin);
-
-    // Power Push Switch (self-locking)
-    const switchBaseGeom = new THREE.BoxGeometry(0.9, 0.6, 0.9);
-    const switchBaseMat = new THREE.MeshStandardMaterial({ color: 0x475569 });
-    const switchBase = new THREE.Mesh(switchBaseGeom, switchBaseMat);
-    switchBase.position.set(0.6, 0.4, -2.4);
-
-    const switchBtnGeom = new THREE.BoxGeometry(0.5, 0.7, 0.5);
-    const switchBtnMat = new THREE.MeshStandardMaterial({ color: 0xdc2626 }); // Red power button
-    this.mb102SwitchBtn = new THREE.Mesh(switchBtnGeom, switchBtnMat);
-    this.mb102SwitchBtn.position.y = 0.5;
-    switchBase.add(this.mb102SwitchBtn);
-    pcbMesh.add(switchBase);
-
-    // USB-A output port
-    const usbGeom = new THREE.BoxGeometry(1.4, 0.7, 1.2);
-    const usbMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.9, roughness: 0.2 });
-    const usbPort = new THREE.Mesh(usbGeom, usbMat);
-    usbPort.position.set(-1.0, 0.5, 2.2);
-    pcbMesh.add(usbPort);
-
-    // Power LED (Green 3mm LED)
-    const ledGeom = new THREE.SphereGeometry(0.25, 16, 16);
-    this.mb102LedMat = new THREE.MeshBasicMaterial({ color: 0x22c55e }); // Bright green when ON
-    this.mb102Led = new THREE.Mesh(ledGeom, this.mb102LedMat);
-    this.mb102Led.position.set(0.8, 0.35, -0.6);
-    pcbMesh.add(this.mb102Led);
-
-    // Voltage Selection Jumpers (set to 5V)
-    const jumperBaseGeom = new THREE.BoxGeometry(0.8, 0.5, 1.2);
-    const jumperBaseMat = new THREE.MeshStandardMaterial({ color: 0x1e293b });
-
-    [-3.2, 3.2].forEach(z => {
-      const jBase = new THREE.Mesh(jumperBaseGeom, jumperBaseMat);
-      jBase.position.set(0.8, 0.35, z);
-
-      // Yellow jumper shunt
-      const shuntGeom = new THREE.BoxGeometry(0.4, 0.4, 0.5);
-      const shuntMat = new THREE.MeshStandardMaterial({ color: 0xfacc15 });
-      const shunt = new THREE.Mesh(shuntGeom, shuntMat);
-      shunt.position.set(0, 0.35, 0.2); // Positioned on 5V pins
-      jBase.add(shunt);
-
-      pcbMesh.add(jBase);
-    });
-
-    this.group.add(this.mb102Group);
+  // X position of header pin index i (0 = USB end)
+  pinX(i) {
+    return ESP_CENTER_X - 7 * PIN_PITCH + i * PIN_PITCH;
   }
 
-  buildJQ6500Module() {
-    this.jq6500Group = new THREE.Group();
-    this.jq6500Group.name = "JQ6500-16P";
-
-    // JQ6500-16P DIP PCB (approx 2.4cm x 1.8cm)
-    const pcbWidth = 4.8;
-    const pcbDepth = 3.6;
-    const pcbHeight = 0.22;
-
-    const pcbGeom = new THREE.BoxGeometry(pcbWidth, pcbHeight, pcbDepth);
-    const pcbMesh = new THREE.Mesh(pcbGeom, this.pcbMat);
-    pcbMesh.position.set(-2.0, 1.8, 0);
-    this.addEdgeLines(pcbMesh, 0x38bdf8);
-    this.jq6500Group.add(pcbMesh);
-
-    // Silkscreen pin labels and module branding
-    const silkTex = this.createJQ6500SilkscreenTexture();
-    const silkGeom = new THREE.PlaneGeometry(pcbWidth * 0.95, pcbDepth * 0.95);
-    const silkMat = new THREE.MeshBasicMaterial({
-      map: silkTex,
-      transparent: true,
-      polygonOffset: true,
-      polygonOffsetFactor: -1
-    });
-    const silkMesh = new THREE.Mesh(silkGeom, silkMat);
-    silkMesh.rotation.x = -Math.PI / 2;
-    silkMesh.position.y = pcbHeight / 2 + 0.01;
-    pcbMesh.add(silkMesh);
-
-    // JQ6500 Main Controller IC Chip (SOIC-24)
-    const icGeom = new THREE.BoxGeometry(2.0, 0.3, 1.4);
-    const icMat = new THREE.MeshStandardMaterial({ color: 0x18181b, roughness: 0.7 });
-    const mainIC = new THREE.Mesh(icGeom, icMat);
-    mainIC.position.set(-0.4, 0.22, -0.1);
-    pcbMesh.add(mainIC);
-
-    // 16-Mbit SPI Flash Chip (W25Q16 SOIC-8)
-    const flashGeom = new THREE.BoxGeometry(1.0, 0.25, 0.9);
-    const flashChip = new THREE.Mesh(flashGeom, icMat);
-    flashChip.position.set(1.4, 0.2, 0.6);
-    pcbMesh.add(flashChip);
-
-    // Micro-USB port on left edge
-    const usbGeom = new THREE.BoxGeometry(0.7, 0.4, 1.0);
-    const usbPort = new THREE.Mesh(usbGeom, this.metalPinMat);
-    usbPort.position.set(-pcbWidth / 2 - 0.2, 0.15, 0);
-    pcbMesh.add(usbPort);
-
-    // 16 Through-hole DIP Pins (8 top, 8 bottom)
-    const pinGeom = new THREE.CylinderGeometry(0.08, 0.08, 0.8, 8);
-    const pinCols = 8;
-    const pinSpacing = (pcbWidth - 0.8) / (pinCols - 1);
-
-    for (let i = 0; i < pinCols; i++) {
-      const x = -pcbWidth / 2 + 0.4 + i * pinSpacing;
-      // Top row pins (Pins 1..8: VCC, SPK+, SPK-, GND, etc.)
-      const pinTop = new THREE.Mesh(pinGeom, this.metalPinMat);
-      pinTop.position.set(x, -0.3, -pcbDepth / 2 + 0.3);
-      pcbMesh.add(pinTop);
-
-      // Bottom row pins (Pins 9..16: K5, K4, K3, K2, K1, etc.)
-      const pinBottom = new THREE.Mesh(pinGeom, this.metalPinMat);
-      pinBottom.position.set(x, -0.3, pcbDepth / 2 - 0.3);
-      pcbMesh.add(pinBottom);
-    }
-
-    this.group.add(this.jq6500Group);
+  // Breadboard hole next to a named ESP32 pin, e.g. '23', 'VIN'
+  espHole(label) {
+    let i = FRONT_ROW.indexOf(label);
+    if (i >= 0) return [this.pinX(i), BOARD_TOP + 0.02, HOLE_Z];
+    i = BACK_ROW.indexOf(label);
+    if (i >= 0) return [this.pinX(i), BOARD_TOP + 0.02, -HOLE_Z];
+    throw new Error(`Unknown ESP32 pin ${label}`);
   }
 
-  createJQ6500SilkscreenTexture() {
+  buildESP32Board() {
+    this.espGroup = new THREE.Group();
+    this.espGroup.name = "ESP32_DevBoard";
+
+    const pcbW = 11.0, pcbD = 5.2, pcbH = 0.22;
+    const pcbGeom = new THREE.BoxGeometry(pcbW, pcbH, pcbD);
+    const pcb = new THREE.Mesh(pcbGeom, this.pcbMat);
+    pcb.position.set(ESP_CENTER_X, 1.9, 0);
+    pcb.castShadow = true;
+    this.addEdgeLines(pcb, 0x38bdf8);
+    this.espGroup.add(pcb);
+
+    // Silkscreen with pin labels
+    const silk = new THREE.Mesh(
+      new THREE.PlaneGeometry(pcbW * 0.98, pcbD * 0.96),
+      new THREE.MeshBasicMaterial({ map: this.createESP32SilkscreenTexture(), transparent: true, polygonOffset: true, polygonOffsetFactor: -1 })
+    );
+    silk.rotation.x = -Math.PI / 2;
+    silk.position.y = pcbH / 2 + 0.01;
+    pcb.add(silk);
+
+    // WROOM module: metal shield can + antenna area at the far (+X) end
+    const shield = new THREE.Mesh(new THREE.BoxGeometry(3.4, 0.35, 3.0), this.shieldMat);
+    shield.position.set(2.2, 0.28, 0);
+    this.addEdgeLines(shield, 0x64748b);
+    pcb.add(shield);
+    const antenna = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.08, 3.0), this.pcbMat);
+    antenna.position.set(4.6, 0.15, 0);
+    this.addEdgeLines(antenna, 0x38bdf8);
+    pcb.add(antenna);
+
+    // USB connector at the -X end, plus BOOT/EN buttons
+    const usb = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.4, 1.2), this.metalPinMat);
+    usb.position.set(-pcbW / 2 + 0.4, 0.3, 0);
+    pcb.add(usb);
+    this.usbPortWorld = new THREE.Vector3(ESP_CENTER_X - pcbW / 2 - 0.1, 2.2, 0);
+    [-0.9, 0.9].forEach(z => {
+      const b = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.25, 0.5), this.headerMat);
+      b.position.set(-pcbW / 2 + 1.6, 0.2, z);
+      pcb.add(b);
+    });
+
+    // Header rows: black plastic strip + pins going down into the breadboard
+    const stripGeom = new THREE.BoxGeometry(15 * PIN_PITCH, 0.5, 0.5);
+    const pinGeom = new THREE.CylinderGeometry(0.06, 0.06, 1.0, 6);
+    [2.2, -2.2].forEach(z => {
+      const strip = new THREE.Mesh(stripGeom, this.headerMat);
+      strip.position.set(ESP_CENTER_X, 1.5, z);
+      this.espGroup.add(strip);
+      for (let i = 0; i < 15; i++) {
+        const pin = new THREE.Mesh(pinGeom, this.metalPinMat);
+        pin.position.set(this.pinX(i), 1.35, z);
+        this.espGroup.add(pin);
+      }
+    });
+
+    this.group.add(this.espGroup);
+  }
+
+  createESP32SilkscreenTexture() {
+    const W = 1100, H = 520;
     const canvas = document.createElement('canvas');
-    canvas.width = 512;
-    canvas.height = 384;
+    canvas.width = W;
+    canvas.height = H;
     const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, W, H);
 
-    ctx.clearRect(0, 0, 512, 384);
+    const used = {};
+    KEYS.forEach(k => { used[String(k.gpio)] = k.css; });
+    used[String(I2S_PINS.bclk)] = '#38bdf8';
+    used[String(I2S_PINS.lrc)] = '#38bdf8';
+    used[String(I2S_PINS.din)] = '#38bdf8';
+    used[String(LED_GPIO)] = '#facc15';
+    used.VIN = '#ef4444';
+    used.GND = '#e2e8f0';
 
-    // Board title
+    const step = (15 * PIN_PITCH / 11.0 * 0.98) * W / 15;
+    const x0 = W / 2 - 7 * step;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = 'bold 22px monospace';
+    const drawRow = (row, yPad, yText) => {
+      row.forEach((label, i) => {
+        const x = x0 + i * step;
+        ctx.beginPath();
+        ctx.arc(x, yPad, 9, 0, Math.PI * 2);
+        ctx.fillStyle = '#fbbf24';
+        ctx.fill();
+        ctx.fillStyle = used[label] || '#64748b';
+        ctx.fillText(/^\d+$/.test(label) ? `D${label}` : label, x, yText);
+      });
+    };
+    drawRow(BACK_ROW, 38, 78);
+    drawRow(FRONT_ROW, H - 38, H - 78);
+
     ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 34px monospace';
+    ctx.fillText('ESP32 DEVKIT', 330, H / 2 - 10);
+    ctx.fillStyle = '#38bdf8';
+    ctx.font = '22px monospace';
+    ctx.fillText('WROOM-32 · 4MB', 330, H / 2 + 28);
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.anisotropy = 4;
+    return tex;
+  }
+
+  buildUsbPower() {
+    this.usbGroup = new THREE.Group();
+    this.usbGroup.name = "USB_Power";
+
+    // 5 V USB wall adapter off the left edge of the breadboard
+    const adapter = new THREE.Mesh(new THREE.BoxGeometry(2.6, 2.2, 2.6), this.breadboardMat);
+    adapter.position.set(-18.5, 1.1, 0);
+    adapter.castShadow = true;
+    this.addEdgeLines(adapter, 0x64748b);
+    this.usbGroup.add(adapter);
+    const label = this.makeLabel('USB 5V', { width: 2.2, height: 0.8, color: '#0f172a' });
+    label.position.set(-18.5, 2.22, 0);
+    this.usbGroup.add(label);
+
+    // Cable from the adapter to the ESP32 USB connector
+    const end = this.usbPortWorld.clone();
+    const curve = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(-17.2, 1.4, 0),
+      new THREE.Vector3(-16.0, 0.3, 0.6),
+      new THREE.Vector3(-14.5, 0.25, 0.4),
+      new THREE.Vector3(end.x - 1.2, end.y, 0),
+      end
+    ]);
+    const cable = new THREE.Mesh(new THREE.TubeGeometry(curve, 40, 0.16, 8, false),
+      new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.6 }));
+    cable.castShadow = true;
+    this.usbGroup.add(cable);
+    const plug = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.5, 0.8), new THREE.MeshStandardMaterial({ color: 0x1e293b }));
+    plug.position.set(end.x - 0.4, end.y, 0);
+    this.usbGroup.add(plug);
+
+    this.group.add(this.usbGroup);
+  }
+
+  // Position of an amplifier header pin (where the wire lands)
+  ampPin(label) {
+    const j = AMP_PINS.indexOf(label);
+    return [AMP_CENTER.x - 1.5 + j * 0.5, AMP_CENTER.y + 0.35, AMP_CENTER.z + 1.0];
+  }
+
+  buildAmplifier() {
+    this.ampGroup = new THREE.Group();
+    this.ampGroup.name = "MAX98357A";
+
+    const pcbW = 4.0, pcbD = 2.8;
+    const pcb = new THREE.Mesh(new THREE.BoxGeometry(pcbW, 0.2, pcbD), this.ampPcbMat);
+    pcb.position.copy(AMP_CENTER);
+    pcb.castShadow = true;
+    this.addEdgeLines(pcb, 0x60a5fa);
+    this.ampGroup.add(pcb);
+
+    // Amp chip
+    const chip = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.18, 0.8), this.headerMat);
+    chip.position.set(0, 0.18, -0.1);
+    pcb.add(chip);
+
+    // Header pins along the front edge (towards the ESP32)
+    const pinGeom = new THREE.CylinderGeometry(0.06, 0.06, 1.2, 6);
+    AMP_PINS.forEach((label, j) => {
+      const pin = new THREE.Mesh(pinGeom, this.metalPinMat);
+      pin.position.set(-1.5 + j * 0.5, -0.2, 1.0);
+      pcb.add(pin);
+    });
+    const strip = new THREE.Mesh(new THREE.BoxGeometry(3.5, 0.35, 0.4), this.headerMat);
+    strip.position.set(0, -0.3, 1.0);
+    pcb.add(strip);
+
+    // Pin labels
+    const labels = document.createElement('canvas');
+    labels.width = 512;
+    labels.height = 96;
+    const ctx = labels.getContext('2d');
     ctx.font = 'bold 26px monospace';
     ctx.textAlign = 'center';
-    ctx.fillText('JQ6500-16P', 256, 175);
+    ctx.textBaseline = 'middle';
+    AMP_PINS.forEach((label, j) => {
+      ctx.fillStyle = ['LRC', 'BCLK', 'DIN'].includes(label) ? '#38bdf8' : label === 'VIN' ? '#f87171' : '#e2e8f0';
+      ctx.fillText(label, 256 + (-1.5 + j * 0.5) * 128, 60);
+    });
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 26px monospace';
+    ctx.fillText('MAX98357A', 256, 20);
+    const lblTex = new THREE.CanvasTexture(labels);
+    const lbl = new THREE.Mesh(new THREE.PlaneGeometry(pcbW, 0.75),
+      new THREE.MeshBasicMaterial({ map: lblTex, transparent: true, polygonOffset: true, polygonOffsetFactor: -1 }));
+    lbl.rotation.x = -Math.PI / 2;
+    lbl.position.set(0, 0.11, 0.45);
+    pcb.add(lbl);
 
-    ctx.fillStyle = '#38bdf8';
-    ctx.font = '16px monospace';
-    ctx.fillText('MP3 SOUND MODULE', 256, 205);
+    // Green 2-pole screw terminal for the speaker at the back edge
+    const term = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.8, 0.8), new THREE.MeshStandardMaterial({ color: 0x16a34a, roughness: 0.5 }));
+    term.position.set(0.8, 0.5, -0.9);
+    this.addEdgeLines(term, 0x14532d);
+    pcb.add(term);
+    [-0.4, 0.4].forEach(x => {
+      const screw = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.1, 12), this.metalPinMat);
+      screw.position.set(x, 0.42, 0);
+      term.add(screw);
+    });
+    this.ampTerminalWorld = [
+      new THREE.Vector3(AMP_CENTER.x + 0.4, AMP_CENTER.y + 0.6, AMP_CENTER.z - 1.3),
+      new THREE.Vector3(AMP_CENTER.x + 1.2, AMP_CENTER.y + 0.6, AMP_CENTER.z - 1.3)
+    ];
 
-    // Top Pin Labels (1-8): VCC, SPK+, SPK-, GND, ...
-    ctx.font = 'bold 18px monospace';
-    const topPins = ['VCC', 'SPK+', 'SPK-', 'GND', 'ROUT', 'LOUT', 'TX', 'RX'];
-    const step = 440 / 7;
-    topPins.forEach((label, idx) => {
-      const x = 36 + idx * step;
-      ctx.fillStyle = (idx === 0) ? '#ef4444' : (idx === 3) ? '#94a3b8' : (idx < 3) ? '#38bdf8' : '#e2e8f0';
-      ctx.fillText(label, x, 32);
+    this.group.add(this.ampGroup);
+  }
 
-      // Gold solder pad circle
-      ctx.beginPath();
-      ctx.arc(x, 48, 6, 0, Math.PI * 2);
-      ctx.fillStyle = '#fbbf24';
-      ctx.fill();
+  buildMiniSpeaker() {
+    this.speakerGroup = new THREE.Group();
+    this.speakerGroup.name = "Speaker_8ohm";
+
+    const rim = new THREE.Mesh(new THREE.CylinderGeometry(2.0, 2.0, 0.4, 32),
+      new THREE.MeshStandardMaterial({ color: 0x475569, metalness: 0.8, roughness: 0.2 }));
+    rim.position.y = 0.2;
+    rim.castShadow = true;
+    this.addEdgeLines(rim, 0x0ea5e9);
+    this.speakerGroup.add(rim);
+
+    const coneGeom = new THREE.ConeGeometry(1.6, 0.35, 32, 1, true);
+    coneGeom.rotateX(Math.PI);
+    const cone = new THREE.Mesh(coneGeom, new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.3, metalness: 0.3 }));
+    cone.position.y = 0.25;
+    this.speakerGroup.add(cone);
+
+    const cap = new THREE.Mesh(new THREE.SphereGeometry(0.5, 16, 16), new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.4 }));
+    cap.position.y = 0.28;
+    cap.scale.y = 0.4;
+    this.speakerGroup.add(cap);
+
+    const tabGeom = new THREE.BoxGeometry(0.3, 0.05, 0.4);
+    [-0.6, 0.6].forEach(x => {
+      const tab = new THREE.Mesh(tabGeom, this.goldMat);
+      tab.position.set(x, 0.05, -1.9);
+      this.speakerGroup.add(tab);
     });
 
-    // Bottom Pin Labels (16-9): K1, K2, K3, K4, K5, BUSY, ...
-    const bottomPins = ['K1', 'K2', 'K3', 'K4', 'K5', 'BUSY', 'VPP', 'ADKEY'];
-    bottomPins.forEach((label, idx) => {
-      const x = 36 + idx * step;
-      ctx.fillStyle = (idx < 5) ? '#10b981' : '#cbd5e1';
-      ctx.fillText(label, x, 360);
+    const label = this.makeLabel('8Ω', { width: 1.0, height: 0.5, color: '#475569' });
+    label.position.set(0, 0.03, 2.4);
+    this.speakerGroup.add(label);
 
-      // Gold solder pad circle
-      ctx.beginPath();
-      ctx.arc(x, 336, 6, 0, Math.PI * 2);
-      ctx.fillStyle = '#fbbf24';
-      ctx.fill();
+    this.speakerGroup.position.set(11.5, BOARD_TOP, -1.8);
+    this.group.add(this.speakerGroup);
+  }
+
+  buildStatusLed() {
+    this.ledGroup = new THREE.Group();
+    this.ledGroup.name = "StatusLED";
+
+    // Resistor (220-330 ohm) lying on the board
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 1.0, 12),
+      new THREE.MeshStandardMaterial({ color: 0xe7d3a8, roughness: 0.6 }));
+    body.rotation.z = Math.PI / 2;
+    body.position.set(-2.0, BOARD_TOP + 0.25, -3.6);
+    this.ledGroup.add(body);
+    [0xf97316, 0xf97316, 0x92400e].forEach((c, i) => {
+      const band = new THREE.Mesh(new THREE.CylinderGeometry(0.21, 0.21, 0.08, 12), new THREE.MeshStandardMaterial({ color: c }));
+      band.position.y = -0.25 + i * 0.2;
+      body.add(band);
+    });
+    const leadGeom = new THREE.CylinderGeometry(0.03, 0.03, 1.8, 6);
+    const lead = new THREE.Mesh(leadGeom, this.metalPinMat);
+    lead.rotation.z = Math.PI / 2;
+    lead.position.set(-2.0, BOARD_TOP + 0.25, -3.6);
+    this.ledGroup.add(lead);
+
+    // LED (5 mm dome)
+    this.ledMat = new THREE.MeshStandardMaterial({ color: 0xef4444, emissive: 0x000000, roughness: 0.2, transparent: true, opacity: 0.9 });
+    const dome = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.5, 16), this.ledMat);
+    dome.position.set(-0.4, BOARD_TOP + 0.55, -3.6);
+    this.ledGroup.add(dome);
+    const top = new THREE.Mesh(new THREE.SphereGeometry(0.3, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2), this.ledMat);
+    top.position.y = 0.25;
+    dome.add(top);
+    [-0.1, 0.1].forEach(dx => {
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.35, 6), this.metalPinMat);
+      leg.position.set(-0.4 + dx, BOARD_TOP + 0.15, -3.6);
+      this.ledGroup.add(leg);
     });
 
-    const tex = new THREE.CanvasTexture(canvas);
-    tex.anisotropy = 4;
-    return tex;
+    this.group.add(this.ledGroup);
+  }
+
+  buttonX(i) {
+    return -12.4 + i * 2.25;
   }
 
   buildPushbuttons() {
     this.buttonsGroup = new THREE.Group();
-    this.buttonsGroup.name = "PoCPushbuttons";
+    this.buttonsGroup.name = "KeyButtons";
 
-    // 5 Tactile Pushbuttons (6x6x5mm)
-    // Placed in breadboard rows corresponding to K1, K2, K3, K4, K5 triggers
     const bodyGeom = new THREE.BoxGeometry(1.2, 0.6, 1.2);
-    const bodyMat = new THREE.MeshStandardMaterial({
-      color: 0x94a3b8,
-      metalness: 0.6,
-      roughness: 0.3
-    });
+    const bodyMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.6, roughness: 0.3 });
+    const actuatorGeom = new THREE.CylinderGeometry(0.4, 0.4, 0.4, 16);
+    const legGeom = new THREE.BoxGeometry(0.1, 0.5, 0.1);
 
-    const actuatorGeom = new THREE.CylinderGeometry(0.35, 0.35, 0.4, 16);
-    const colors = [0x10b981, 0x3b82f6, 0x8b5cf6, 0xf59e0b, 0xef4444]; // Distinct trigger colors
-
-    for (let i = 0; i < 5; i++) {
+    KEYS.forEach((k, i) => {
       const btnGroup = new THREE.Group();
-      btnGroup.name = `BreadboardBtn_K${i + 1}`;
+      btnGroup.name = `KeyButton_${k.key}`;
 
-      // Metal switch housing
       const body = new THREE.Mesh(bodyGeom, bodyMat);
       body.position.y = 0.3;
       body.castShadow = true;
       this.addEdgeLines(body, 0x64748b);
       btnGroup.add(body);
 
-      // Color plunger actuator
-      const actMat = new THREE.MeshStandardMaterial({
-        color: colors[i],
-        roughness: 0.2
-      });
-      const actuator = new THREE.Mesh(actuatorGeom, actMat);
+      const actuator = new THREE.Mesh(actuatorGeom, new THREE.MeshStandardMaterial({ color: k.color, roughness: 0.2 }));
       actuator.position.y = 0.7;
       btnGroup.add(actuator);
 
-      // 4 Leg pins
-      const legGeom = new THREE.BoxGeometry(0.1, 0.5, 0.1);
       [[-0.5, -0.5], [0.5, -0.5], [-0.5, 0.5], [0.5, 0.5]].forEach(([lx, lz]) => {
         const leg = new THREE.Mesh(legGeom, this.metalPinMat);
         leg.position.set(lx, -0.15, lz);
         btnGroup.add(leg);
       });
 
-      // Position on the right side of the breadboard
-      const xPos = 2.4 + i * 1.6;
-      const zPos = 2.4;
-      btnGroup.position.set(xPos, 1.0, zPos);
+      // Key number printed on the board in front of the button
+      const label = this.makeLabel(k.key, { width: 0.8, height: 0.8, color: k.css, font: 'bold 150px sans-serif' });
+      label.position.set(0, 0.02, 1.15);
+      btnGroup.add(label);
 
-      // Metadata for click interaction
+      btnGroup.position.set(this.buttonX(i), BOARD_TOP, 3.4);
+
       actuator.userData = {
         isBreadboardButton: true,
-        keyNumber: i + 1,
-        keyLabel: `K${i + 1}`,
-        group: btnGroup,
-        baseY: 1.0
+        keyChar: k.key,
+        gpio: k.gpio,
+        group: btnGroup
       };
 
       this.interactivePushbuttons.push(actuator);
-      this.pushbuttonsMap[i + 1] = actuator;
-
+      this.pushbuttonsMap[k.key] = actuator;
       this.buttonsGroup.add(btnGroup);
-    }
+    });
 
     this.group.add(this.buttonsGroup);
   }
 
-  buildMiniSpeaker() {
-    this.speakerGroup = new THREE.Group();
-    this.speakerGroup.name = "PoC_MiniSpeaker";
-
-    // Slim 8 Ohm 1W speaker (placed right above or beside breadboard)
-    const rimGeom = new THREE.CylinderGeometry(2.0, 2.0, 0.4, 32);
-    const rimMat = new THREE.MeshStandardMaterial({
-      color: 0x475569,
-      metalness: 0.8,
-      roughness: 0.2
-    });
-    const rim = new THREE.Mesh(rimGeom, rimMat);
-    rim.position.y = 0.2;
-    rim.castShadow = true;
-    this.addEdgeLines(rim, 0x0ea5e9);
-    this.speakerGroup.add(rim);
-
-    // Mylar/translucent speaker cone
-    const coneGeom = new THREE.ConeGeometry(1.6, 0.35, 32, 1, true);
-    coneGeom.rotateX(Math.PI);
-    const coneMat = new THREE.MeshStandardMaterial({
-      color: 0x0284c7, // Vivid cyan diaphragm
-      roughness: 0.3,
-      metalness: 0.3
-    });
-    const cone = new THREE.Mesh(coneGeom, coneMat);
-    cone.position.y = 0.25;
-    this.speakerGroup.add(cone);
-
-    // Center dust cap
-    const capGeom = new THREE.SphereGeometry(0.5, 16, 16);
-    const capMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.4 });
-    const cap = new THREE.Mesh(capGeom, capMat);
-    cap.position.y = 0.28;
-    cap.scale.y = 0.4;
-    this.speakerGroup.add(cap);
-
-    // Solder tabs (+ and -)
-    const tabGeom = new THREE.BoxGeometry(0.3, 0.05, 0.4);
-    [-0.8, 0.8].forEach((x, idx) => {
-      const tab = new THREE.Mesh(tabGeom, this.goldMat);
-      tab.position.set(x, 0.05, 1.9);
-      this.speakerGroup.add(tab);
-    });
-
-    // Position on right-top of breadboard
-    this.speakerGroup.position.set(6.8, 1.0, -2.6);
-    this.group.add(this.speakerGroup);
-  }
-
-  buildDupontJumpers() {
+  buildWires() {
     this.wiresGroup = new THREE.Group();
-    this.wiresGroup.name = "DupontJumpers";
+    this.wiresGroup.name = "Jumpers";
 
-    // Color-coded jumper wires:
-    // 1. Red (+5V power from MB102 rail to JQ6500 VCC)
-    // 2. Black (GND from MB102 rail to JQ6500 GND)
-    // 3. SPK+ and SPK- wires from JQ6500 to the mini speaker
-    // 4. K1..K5 wires from JQ6500 pins to the 5 pushbuttons
-    // 5. GND jumpers connecting buttons to bottom GND rail
-
-    const wireSpecs = [
-      // 5V Power Wire (Red)
-      {
-        color: 0xef4444,
-        start: [-6.8, 1.2, -3.4],
-        end: [-4.0, 1.9, -1.5],
-        sag: -1.2,
-        name: "5V_VCC"
-      },
-      // Common GND Wire (Black)
-      {
-        color: 0x1e293b,
-        start: [-6.8, 1.2, -2.6],
-        end: [-2.2, 1.9, -1.5],
-        sag: -0.9,
-        name: "GND_Main"
-      },
-      // SPK+ to Speaker (Cyan)
-      {
-        color: 0x0ea5e9,
-        start: [-3.4, 1.9, -1.5],
-        end: [6.0, 1.2, -0.8],
-        sag: -1.8,
-        name: "SPK_Positive"
-      },
-      // SPK- to Speaker (Slate/Dark Cyan)
-      {
-        color: 0x0369a1,
-        start: [-2.8, 1.9, -1.5],
-        end: [7.6, 1.2, -0.8],
-        sag: -1.6,
-        name: "SPK_Negative"
-      },
-      // K1 Wire (Green)
-      {
-        color: 0x10b981,
-        start: [-4.0, 1.9, 1.5],
-        end: [2.4, 1.4, 2.4],
-        sag: -1.4,
-        name: "K1_Trigger"
-      },
-      // K2 Wire (Blue)
-      {
-        color: 0x3b82f6,
-        start: [-3.4, 1.9, 1.5],
-        end: [4.0, 1.4, 2.4],
-        sag: -1.5,
-        name: "K2_Trigger"
-      },
-      // K3 Wire (Purple)
-      {
-        color: 0x8b5cf6,
-        start: [-2.8, 1.9, 1.5],
-        end: [5.6, 1.4, 2.4],
-        sag: -1.6,
-        name: "K3_Trigger"
-      },
-      // K4 Wire (Amber)
-      {
-        color: 0xf59e0b,
-        start: [-2.2, 1.9, 1.5],
-        end: [7.2, 1.4, 2.4],
-        sag: -1.7,
-        name: "K4_Trigger"
-      },
-      // K5 Wire (Rose)
-      {
-        color: 0xf43f5e,
-        start: [-1.6, 1.9, 1.5],
-        end: [8.8, 1.4, 2.4],
-        sag: -1.8,
-        name: "K5_Trigger"
-      }
+    const I2S_COLOR = { bclk: 0x0ea5e9, lrc: 0x0369a1, din: 0x22d3ee };
+    const specs = [
+      // Power for the amplifier: ESP32 5V (VIN) and GND
+      { color: 0xef4444, start: this.espHole('VIN'), end: this.ampPin('VIN'), arch: 3.4, name: 'VIN_5V_to_AMP' },
+      { color: 0x1e293b, start: this.espHole('GND'), end: this.ampPin('GND'), arch: 3.0, name: 'GND_to_AMP' },
+      // I2S
+      { color: I2S_COLOR.bclk, start: this.espHole(String(I2S_PINS.bclk)), end: this.ampPin('BCLK'), arch: 2.6, name: `GPIO${I2S_PINS.bclk}_BCLK` },
+      { color: I2S_COLOR.lrc, start: this.espHole(String(I2S_PINS.lrc)), end: this.ampPin('LRC'), arch: 2.3, name: `GPIO${I2S_PINS.lrc}_LRC` },
+      { color: I2S_COLOR.din, start: this.espHole(String(I2S_PINS.din)), end: this.ampPin('DIN'), arch: 2.0, name: `GPIO${I2S_PINS.din}_DIN` },
+      // LED through its resistor
+      { color: 0xfacc15, start: this.espHole(String(LED_GPIO)), end: [-2.9, BOARD_TOP + 0.25, -3.6], arch: 1.2, name: `GPIO${LED_GPIO}_LED` },
+      // LED cathode to the back GND rail
+      { color: 0x1e293b, start: [-0.3, BOARD_TOP + 0.02, -3.6], end: [-0.3, BOARD_TOP + 0.02, -4.3], arch: 0.5, name: 'LED_GND' },
+      // Speaker from the amp terminal
+      { color: 0xdc2626, start: this.ampTerminalWorld[0].toArray(), end: [10.9, BOARD_TOP + 0.1, -3.7], arch: 0.8, name: 'SPK_plus' },
+      { color: 0x111827, start: this.ampTerminalWorld[1].toArray(), end: [12.1, BOARD_TOP + 0.1, -3.7], arch: 0.6, name: 'SPK_minus' }
     ];
 
-    wireSpecs.forEach(spec => {
-      this.createCatenaryWire(spec);
+    // One wire per key: GPIO -> button, and the button's other leg to the front GND rail
+    KEYS.forEach((k, i) => {
+      const bx = this.buttonX(i);
+      specs.push({
+        color: k.color,
+        start: this.espHole(String(k.gpio)),
+        end: [bx - 0.5, BOARD_TOP + 0.02, 2.75],
+        arch: 1.0 + (i % 5) * 0.35 + (FRONT_ROW.includes(String(k.gpio)) ? 0 : 1.6),
+        name: `GPIO${k.gpio}_KEY${k.key}`
+      });
+      specs.push({
+        color: 0x1e293b,
+        start: [bx + 0.5, BOARD_TOP + 0.02, 4.05],
+        end: [bx + 0.5, BOARD_TOP + 0.02, 4.65],
+        arch: 0.35,
+        name: `KEY${k.key}_GND`
+      });
     });
 
+    specs.forEach(spec => this.createArchWire(spec));
     this.group.add(this.wiresGroup);
   }
 
-  createCatenaryWire({ color, start, end, sag, name }) {
+  // Jumper wire that rises from both ends and arches over the board
+  createArchWire({ color, start, end, arch, name }) {
     const p0 = new THREE.Vector3(...start);
     const p2 = new THREE.Vector3(...end);
-    const p1 = new THREE.Vector3().lerpVectors(p0, p2, 0.5);
-    p1.y += sag; // gravity curve or elevation
+    const mid = new THREE.Vector3().lerpVectors(p0, p2, 0.5);
+    mid.y = Math.max(p0.y, p2.y) + arch;
+    const rise = Math.min(0.6, arch * 0.6);
 
     const curve = new THREE.CatmullRomCurve3([
       p0,
-      new THREE.Vector3(p0.x, p0.y + 0.6, p0.z),
-      p1,
-      new THREE.Vector3(p2.x, p2.y + 0.6, p2.z),
+      new THREE.Vector3(p0.x, p0.y + rise, p0.z),
+      mid,
+      new THREE.Vector3(p2.x, p2.y + rise, p2.z),
       p2
     ]);
 
-    const geom = new THREE.TubeGeometry(curve, 36, 0.08, 8, false);
-    const mat = new THREE.MeshStandardMaterial({
-      color: color,
-      roughness: 0.4,
-      metalness: 0.1
-    });
-
-    const wire = new THREE.Mesh(geom, mat);
+    const wire = new THREE.Mesh(
+      new THREE.TubeGeometry(curve, 48, 0.07, 8, false),
+      new THREE.MeshStandardMaterial({ color, roughness: 0.4, metalness: 0.1 })
+    );
     wire.name = name;
     wire.castShadow = true;
     this.wiresGroup.add(wire);
     this.wires.push(wire);
   }
 
-  animateButtonPress(keyNumber) {
-    const btn = this.pushbuttonsMap[keyNumber];
+  animateButtonPress(keyChar) {
+    const btn = this.pushbuttonsMap[keyChar];
     if (!btn) return;
-
-    btn.position.y = 0.45; // press down
-    setTimeout(() => {
-      btn.position.y = 0.7; // spring up
-    }, 120);
+    btn.position.y = 0.45;
+    setTimeout(() => { btn.position.y = 0.7; }, 120);
   }
 
-  setPower(powered) {
-    this.isCircuitPowered = powered;
-    if (this.mb102LedMat) {
-      this.mb102LedMat.color.setHex(powered ? 0x22c55e : 0x475569);
-    }
-    if (this.mb102SwitchBtn) {
-      this.mb102SwitchBtn.position.y = powered ? 0.35 : 0.55;
+  // LED lit while a clip plays
+  setLed(on) {
+    if (this.ledMat) {
+      this.ledMat.emissive.setHex(on ? 0xef4444 : 0x000000);
+      this.ledMat.emissiveIntensity = on ? 1.2 : 0;
     }
   }
 }

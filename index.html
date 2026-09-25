@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title data-i18n="projectTitle">Telephone Soundboard</title>
+  <title>Button Box Phone</title>
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -20,30 +20,17 @@
       </div>
       <div class="brand-title-group">
         <h1>
-          <span data-i18n="projectTitle">Telephone Soundboard</span>
-          <span class="cad-badge" data-i18n="projectBadge">BLUEPRINT V1.0</span>
+          <span>Button Box Phone</span>
+          <span class="cad-badge">BLUEPRINT V2.0</span>
         </h1>
-        <p data-i18n="projectSub">REV 1.0 • AUTONOMOUS HARDWARE SCHEMATIC • 0µA PHYSICAL POWER CUTOFF</p>
-      </div>
-    </div>
-
-    <div class="header-actions">
-      <!-- Language Selector Switcher -->
-      <div class="lang-selector-group">
-        <button class="lang-btn" data-lang="es">ES</button>
-        <button class="lang-btn active" data-lang="en">EN</button>
-      </div>
-
-      <!-- Power Status Indicator Badge -->
-      <div id="power-status-badge" class="status-badge standby">
-        <span class="dot standby"></span> <span id="power-status-text" data-i18n="statusStandby">0 µA COMPLETE CUT-OFF (HUNG UP)</span>
+        <p>REV 2.0 • ESP32 + MAX98357A • 10 KEYS • USB POWERED</p>
       </div>
     </div>
   </header>
 
   <!-- Main Blueprint Layout -->
   <main class="blueprint-layout">
-    
+
     <!-- 3D Interactive Viewport -->
     <div class="viewport-wrapper">
       <!-- Three.js Canvas Container -->
@@ -53,47 +40,40 @@
       <div class="viewport-header-bar">
         <button class="view-tab-btn active" data-view="phone">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-          <span data-i18n="viewPhone">Complete Phone</span>
+          <span>Complete Phone</span>
         </button>
         <button class="view-tab-btn" data-view="breadboard">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="2" ry="2"/><path d="M6 6h.01M10 6h.01M14 6h.01M18 6h.01M6 10h.01M18 10h.01M6 14h.01M18 14h.01M6 18h.01M10 18h.01M14 18h.01M18 18h.01"/></svg>
-          <span data-i18n="viewBreadboard">Breadboard PoC</span>
+          <span>Breadboard Circuit</span>
         </button>
         <button class="view-tab-btn" data-view="modding">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 4.24 4.24"/><path d="m14.83 9.17 4.24-4.24"/><path d="m14.83 14.83 4.24 4.24"/><path d="m9.17 14.83-4.24 4.24"/></svg>
-          <span data-i18n="viewModding">Internal Modding & Schematic</span>
+          <span>Internal Layout</span>
         </button>
       </div>
 
-      <!-- Context Info Pill -->
-      <div id="view-context-info" class="context-info-pill">
-        <!-- populated dynamically by i18n -->
-      </div>
+      <!-- Context Info Pill (text set by js/app.js for the active view) -->
+      <div id="view-context-info" class="context-info-pill"></div>
 
       <!-- Floating Controls Toolbar -->
       <div class="viewport-floating-toolbar">
-        <button id="btn-toggle-handset" class="btn-pill primary">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-          <span id="btn-toggle-handset-text" data-i18n="btnLiftHandset">Lift Handset (5V ON)</span>
-        </button>
-
         <button id="btn-toggle-xray" class="btn-pill">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
-          <span data-i18n="btnXray">X-Ray / Cutaway</span>
+          <span>X-Ray / Cutaway</span>
         </button>
 
         <div class="toolbar-separator"></div>
 
-        <button id="btn-reset-cam" class="btn-pill" title="Reset Camera View">
+        <button id="btn-reset-cam" class="btn-pill" title="Reset camera view">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
-          <span data-i18n="btnResetCam">Reset View</span>
+          <span>Reset View</span>
         </button>
 
         <div class="toolbar-separator"></div>
 
         <div style="display: flex; align-items: center; gap: 8px; font-size: 0.75rem; font-family: var(--font-mono); color: var(--text-muted);">
-          <span data-i18n="volLabel">VOL</span>
-          <input type="range" id="volume-slider" min="0" max="1" step="0.05" value="0.7" style="width: 70px; accent-color: var(--accent-cyan);">
+          <span>VOL</span>
+          <input type="range" id="volume-slider" min="0" max="1" step="0.05" value="0.7" style="width: 70px; accent-color: var(--accent-cyan);" aria-label="Volume">
         </div>
       </div>
     </div>
@@ -102,240 +82,240 @@
     <aside class="blueprint-sidebar">
       <!-- Sidebar Navigation Tabs -->
       <nav class="sidebar-tabs">
-        <button class="sidebar-tab-btn active" data-tab="tab-concept" data-i18n="tabConcept">1. Concept</button>
-        <button class="sidebar-tab-btn" data-tab="tab-bom" data-i18n="tabBom">2. BOM</button>
-        <button class="sidebar-tab-btn" data-tab="tab-arch" data-i18n="tabArch">3. Wiring</button>
-        <button class="sidebar-tab-btn" data-tab="tab-plan" data-i18n="tabPlan">4. Roadmap</button>
-        <button class="sidebar-tab-btn" data-tab="tab-sound" data-i18n="tabSound">5. Sounds</button>
+        <button class="sidebar-tab-btn active" data-tab="tab-concept">1. Overview</button>
+        <button class="sidebar-tab-btn" data-tab="tab-bom">2. BOM</button>
+        <button class="sidebar-tab-btn" data-tab="tab-arch">3. Wiring</button>
+        <button class="sidebar-tab-btn" data-tab="tab-plan">4. Steps</button>
+        <button class="sidebar-tab-btn" data-tab="tab-sound">5. Sounds</button>
       </nav>
 
       <!-- Sidebar Tab Content -->
       <div class="sidebar-content">
 
-        <!-- TAB 1: CONCEPTO -->
+        <!-- TAB 1: OVERVIEW -->
         <div id="tab-concept" class="tab-pane active">
           <h2 class="section-title">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
-            <span data-i18n="conceptTitle">General Concept</span>
+            <span>Overview</span>
           </h2>
-          <p class="section-subtitle" data-i18n="conceptSubtitle">
-            A classic landline push-button telephone modified into an autonomous soundboard playing pre-recorded MP3s upon pressing its original keys, leveraging the mechanical hook switch as the master power cut-off.
+          <p class="section-subtitle">
+            A recycled phone case turned into a sound box: each of the 10 keypad keys (1 to 9 and 0) is a rubber push button that plays its own short audio clip through a small speaker.
           </p>
 
           <div class="blueprint-card">
-            <h4 data-i18n="cardZeroPowerTitle">0 µA Physical Cutoff Principle</h4>
-            <p data-i18n="cardZeroPowerText">
-              Unlike microcontrollers kept in continuous Deep Sleep (which still draw 15 to 80 mA), this design routes the mechanical hook switch contacts directly in series with the positive 5V supply line.
+            <h4>How it works</h4>
+            <p>
+              An ESP32 dev board reads the 10 buttons (active-low, internal pull-ups) and plays WAV files stored in its flash (LittleFS). The audio goes out over I2S to a MAX98357A amplifier that drives an 8 Ω speaker directly.
             </p>
             <div class="metric-box">
               <div class="metric-item">
-                <div class="metric-label" data-i18n="metricStandbyLabel">Standby Draw</div>
-                <div class="metric-value highlight-green">0.000 µA</div>
+                <div class="metric-label">Trigger keys</div>
+                <div class="metric-value highlight-green">10</div>
               </div>
               <div class="metric-item">
-                <div class="metric-label" data-i18n="metricBootLabel">JQ6500 Boot Time</div>
-                <div class="metric-value highlight-cyan">&lt; 200 ms</div>
+                <div class="metric-label">WAV sample rate</div>
+                <div class="metric-value highlight-cyan">16 kHz</div>
               </div>
             </div>
-            <p style="font-size: 0.75rem; color: var(--text-dim);" data-i18n="metricFootnote">
-              *Upon lifting the handset, internal leaf contacts snap closed instantly, powering up the JQ6500 module with zero perceptible lag.
+            <p style="font-size: 0.75rem; color: var(--text-dim);">
+              Mono, 16-bit PCM recommended. About 87 s of audio fit in total at that format.
             </p>
           </div>
 
           <div class="blueprint-card">
-            <h4 data-i18n="cardAutonomousTitle">Autonomous Key Trigger Mode (Key Mode)</h4>
-            <p data-i18n="cardAutonomousText">
-              The JQ6500-16P module features 5 dedicated hardware trigger pins (<strong>K1 through K5</strong>). Pulling any pin to ground (GND) via a momentary push immediately fires the assigned track without requiring an Arduino or microcontroller.
+            <h4>Playback rules</h4>
+            <ul class="plain-list">
+              <li>At power-up a short 3-note chime plays.</li>
+              <li>Press a key while idle: its clip plays to the end.</li>
+              <li>Press any key while a clip plays: playback stops (no new clip starts).</li>
+              <li>The LED blinks while audio plays and is off when idle.</li>
+            </ul>
+          </div>
+
+          <div class="blueprint-card">
+            <h4>Power</h4>
+            <p>
+              Always on from a 5 V USB adapter through the ESP32 board's USB port; there is no power switch. The amplifier takes 5 V from the board's VIN pin.
             </p>
           </div>
 
           <div class="blueprint-card">
-            <h4 data-i18n="cardAcousticTitle">Concealed Earpiece Acoustics</h4>
-            <p data-i18n="cardAcousticText">
-              The slim 8Ω mini speaker replaces the original carbon/dynamic earpiece capsule inside the handset. Audio plays directly into the user's ear for an authentic telephone call feel.
+            <h4>Firmware</h4>
+            <p>
+              The PlatformIO project lives in the <code>firmware/</code> folder of the repository, with build, flashing and audio replacement instructions in <code>firmware/README.md</code>.
             </p>
           </div>
         </div>
 
-        <!-- TAB 2: BOM (LISTA DE MATERIALES) -->
+        <!-- TAB 2: BOM -->
         <div id="tab-bom" class="tab-pane">
           <h2 class="section-title">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-            <span data-i18n="bomTitle">Bill of Materials (BOM)</span>
+            <span>Bill of Materials (BOM)</span>
           </h2>
-          <p class="section-subtitle" data-i18n="bomSubtitle">
-            Complete list of components required for Phase 1 (Desktop PoC) and the final modified telephone. Click 'View' to focus the 3D camera on any part.
+          <p class="section-subtitle">
+            Everything needed for the finished phone. Click 'View' to focus the 3D camera on a part.
           </p>
 
-          <h4 style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 6px;" data-i18n="bomSectionPoc">Proof of Concept (PoC Bench)</h4>
           <div class="bom-table-wrapper">
             <table class="bom-table">
               <thead>
                 <tr>
-                  <th data-i18n="colComponent">Component</th>
-                  <th data-i18n="colQty">Qty</th>
-                  <th data-i18n="colDetail">Details</th>
-                  <th data-i18n="col3D">3D</th>
+                  <th>Component</th>
+                  <th>Qty</th>
+                  <th>Details</th>
+                  <th>3D</th>
                 </tr>
               </thead>
               <tbody>
                 <tr>
-                  <td><strong>JQ6500-16P</strong></td>
+                  <td><strong>ESP32 dev board</strong></td>
                   <td>1</td>
-                  <td data-i18n="bomJQ6500">JQ6500-16P MP3 Module (2MB/4MB SPI Flash)</td>
-                  <td><button class="btn-locate" data-focus="jq6500" data-i18n="btnView3D">🔍 View</button></td>
+                  <td>ESP32-WROOM-32, 4 MB flash ("esp32dev"), no PSRAM needed</td>
+                  <td><button class="btn-locate" data-focus="esp32">🔍 View</button></td>
                 </tr>
                 <tr>
-                  <td><strong>MB102</strong></td>
+                  <td><strong>Push buttons</strong></td>
+                  <td>10</td>
+                  <td>Rubber momentary buttons, normally open, one per key 1-9 and 0</td>
+                  <td><button class="btn-locate" data-focus="pushbuttons">🔍 View</button></td>
+                </tr>
+                <tr>
+                  <td><strong>MAX98357A</strong></td>
                   <td>1</td>
-                  <td data-i18n="bomMB102">MB102 Breadboard Power Supply (3.3V/5V)</td>
-                  <td><button class="btn-locate" data-focus="mb102" data-i18n="btnView3D">🔍 View</button></td>
+                  <td>I2S class D mono amplifier breakout</td>
+                  <td><button class="btn-locate" data-focus="amp">🔍 View</button></td>
                 </tr>
                 <tr>
-                  <td><span data-i18n="bomSpeaker">Mini Speaker 8Ω</span></td>
+                  <td><strong>Speaker 8 Ω</strong></td>
                   <td>1</td>
-                  <td>8Ω 0.5W/1W slim profile</td>
-                  <td><button class="btn-locate" data-focus="speaker" data-i18n="btnView3D">🔍 View</button></td>
+                  <td>0.5-3 W, wired straight to the amplifier</td>
+                  <td><button class="btn-locate" data-focus="speaker">🔍 View</button></td>
                 </tr>
                 <tr>
-                  <td><span data-i18n="bomPushbuttons">5x Tactile Pushbuttons</span></td>
-                  <td>5</td>
-                  <td>6x6x5mm tactile buttons</td>
-                  <td><button class="btn-locate" data-focus="pushbuttons" data-i18n="btnView3D">🔍 View</button></td>
+                  <td><strong>LED + resistor</strong></td>
+                  <td>1 + 1</td>
+                  <td>Any 3 or 5 mm LED, 220-330 Ω series resistor</td>
+                  <td><button class="btn-locate" data-focus="led">🔍 View</button></td>
                 </tr>
                 <tr>
-                  <td><span data-i18n="bomBreadboard">Breadboard</span></td>
+                  <td><strong>USB cable + adapter</strong></td>
                   <td>1</td>
-                  <td>400 or 830 tie-points</td>
-                  <td><button class="btn-locate" data-focus="mb102" data-i18n="btnView3D">🔍 View</button></td>
+                  <td>5 V USB adapter, 1 A or more; always-on power and flashing</td>
+                  <td><button class="btn-locate" data-focus="usb">🔍 View</button></td>
                 </tr>
                 <tr>
-                  <td><span data-i18n="bomPowerSupply">Switching Adapter</span></td>
+                  <td><strong>Recycled phone case</strong></td>
                   <td>1</td>
-                  <td>9V or 12V DC 1A (5.5x2.1mm)</td>
-                  <td><button class="btn-locate" data-focus="mb102" data-i18n="btnView3D">🔍 View</button></td>
+                  <td>Housing, keypad and handset</td>
+                  <td><button class="btn-locate" data-focus="keypad">🔍 View</button></td>
                 </tr>
                 <tr>
-                  <td><span data-i18n="bomDupont">Dupont Jumpers</span></td>
+                  <td><strong>Breadboard + jumpers</strong></td>
                   <td>1 set</td>
-                  <td>M-M & M-F (20cm set)</td>
-                  <td><button class="btn-locate" data-focus="jq6500" data-i18n="btnView3D">🔍 View</button></td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          <h4 style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-top: 24px; margin-bottom: 6px;" data-i18n="bomSectionFinal">Final Hardware (Telephone Chassis)</h4>
-          <div class="bom-table-wrapper">
-            <table class="bom-table">
-              <thead>
-                <tr>
-                  <th data-i18n="colComponent">Component</th>
-                  <th data-i18n="colQty">Qty</th>
-                  <th data-i18n="colDetail">Function</th>
-                  <th data-i18n="col3D">3D</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td><strong data-i18n="bomPhoneChassis">Vintage Phone Chassis</strong></td>
-                  <td>1</td>
-                  <td>Housing, cradle, handset</td>
-                  <td><button class="btn-locate" data-focus="keypad" data-i18n="btnView3D">🔍 View</button></td>
-                </tr>
-                <tr>
-                  <td><strong data-i18n="bomHookSwitch">Mechanical Hook Switch</strong></td>
-                  <td>1</td>
-                  <td>Physical 0µA power cutoff</td>
-                  <td><button class="btn-locate" data-focus="hook_switch" data-i18n="btnView3D">🔍 View</button></td>
-                </tr>
-                <tr>
-                  <td><strong data-i18n="bomKeypad">Keypad Matrix</strong></td>
-                  <td>1</td>
-                  <td>Keys 1-5 wired to GND</td>
-                  <td><button class="btn-locate" data-focus="keypad" data-i18n="btnView3D">🔍 View</button></td>
+                  <td>For testing before installing in the case</td>
+                  <td><button class="btn-locate" data-focus="esp32">🔍 View</button></td>
                 </tr>
               </tbody>
             </table>
           </div>
         </div>
 
-        <!-- TAB 3: ARQUITECTURA & PINOUT -->
+        <!-- TAB 3: WIRING & PINOUT -->
         <div id="tab-arch" class="tab-pane">
           <h2 class="section-title">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-            <span data-i18n="archTitle">Connections & JQ6500 Pinout</span>
+            <span>Wiring & Pinout</span>
           </h2>
-          <p class="section-subtitle" data-i18n="archSubtitle">
-            Direct hardware wiring without code or microcontrollers. Keypad keys bridge trigger pins directly to ground (Active LOW).
+          <p class="section-subtitle">
+            Same pin table as <code>firmware/src/main.cpp</code>. Buttons are active-low: one leg to the GPIO, the other to GND (internal pull-ups, no resistors needed).
           </p>
 
           <div class="blueprint-card">
-            <h4 data-i18n="cardPowerAudioTitle">Power & Audio Connections</h4>
-            <div class="pinout-grid">
+            <h4>Keypad buttons</h4>
+            <div class="bom-table-wrapper">
+              <table class="bom-table pin-table" id="pin-table-keys">
+                <thead>
+                  <tr>
+                    <th>Key</th>
+                    <th>ESP32 GPIO</th>
+                    <th>Other leg</th>
+                    <th>File</th>
+                  </tr>
+                </thead>
+                <tbody><!-- rows generated from js/hardware.js --></tbody>
+              </table>
+            </div>
+            <p style="font-size: 0.75rem; color: var(--text-dim); margin-top: 8px;">Key 0 plays <code>audio10.wav</code>.</p>
+          </div>
+
+          <div class="blueprint-card">
+            <h4>MAX98357A amplifier</h4>
+            <div class="pinout-grid" id="pin-table-amp">
               <div class="pin-row">
-                <div><span class="pin-tag vcc">Pin 1 (VCC)</span> <span data-i18n="vccDesc">&rarr; Hook Switch Output (+5V)</span></div>
-                <div style="color: var(--accent-red); font-weight: bold;">+5V DC</div>
+                <div><span class="pin-tag vcc">VIN</span> &rarr; ESP32 5V (VIN) pin</div>
+                <div style="color: var(--accent-red); font-weight: bold;">+5V USB</div>
               </div>
               <div class="pin-row">
-                <div><span class="pin-tag gnd">Pin 4 (GND)</span> <span data-i18n="gndDesc">&rarr; Common Ground (0V)</span></div>
-                <div style="color: var(--text-muted); font-weight: bold;">0V GND</div>
+                <div><span class="pin-tag gnd">GND</span> &rarr; ESP32 GND</div>
+                <div style="color: var(--text-muted); font-weight: bold;">0V</div>
+              </div>
+              <div class="pin-row" data-signal="bclk">
+                <div><span class="pin-tag spk">BCLK</span> &rarr; I2S bit clock</div>
+                <div style="color: var(--accent-cyan); font-weight: bold;">GPIO 27</div>
+              </div>
+              <div class="pin-row" data-signal="lrc">
+                <div><span class="pin-tag spk">LRC</span> &rarr; I2S word select</div>
+                <div style="color: var(--accent-cyan); font-weight: bold;">GPIO 26</div>
+              </div>
+              <div class="pin-row" data-signal="din">
+                <div><span class="pin-tag spk">DIN</span> &rarr; I2S data</div>
+                <div style="color: var(--accent-cyan); font-weight: bold;">GPIO 25</div>
               </div>
               <div class="pin-row">
-                <div><span class="pin-tag spk">Pin 2 (SPK+)</span> <span data-i18n="spkPDesc">&rarr; Mini Speaker (+)</span></div>
-                <div style="color: var(--accent-cyan); font-weight: bold;">Audio Out +</div>
+                <div><span class="pin-tag gnd">GAIN</span> &rarr; not connected</div>
+                <div style="color: var(--text-muted);">9 dB default</div>
               </div>
               <div class="pin-row">
-                <div><span class="pin-tag spk">Pin 3 (SPK-)</span> <span data-i18n="spkMDesc">&rarr; Mini Speaker (-)</span></div>
-                <div style="color: var(--accent-cyan); font-weight: bold;">Audio Out -</div>
+                <div><span class="pin-tag gnd">SD</span> &rarr; not connected</div>
+                <div style="color: var(--text-muted);">(L+R)/2 mono</div>
+              </div>
+              <div class="pin-row">
+                <div><span class="pin-tag spk">SPK + / -</span> &rarr; 8 Ω speaker</div>
+                <div style="color: var(--text-muted);">never to GND</div>
               </div>
             </div>
           </div>
 
           <div class="blueprint-card">
-            <h4 data-i18n="cardTriggersTitle">Keypad Triggers (Active LOW)</h4>
-            <p style="font-size: 0.78rem; margin-bottom: 8px;" data-i18n="triggersSubtitle">
-              Each key connects the trigger pin to ground when pressed. Internal pull-up resistors included in chip.
-            </p>
+            <h4>Status LED & power</h4>
             <div class="pinout-grid">
-              <div class="pin-row">
-                <div><span class="pin-tag trigger">Pin 15 (K1)</span> <span data-i18n="k1Desc">&rarr; Original Key [1]</span></div>
-                <div style="color: var(--text-muted);" data-i18n="track1">Track 00001.mp3</div>
+              <div class="pin-row" data-signal="led">
+                <div><span class="pin-tag trigger">LED</span> &rarr; 220-330 Ω &rarr; LED anode, cathode to GND</div>
+                <div style="color: var(--accent-amber); font-weight: bold;">GPIO 33</div>
               </div>
               <div class="pin-row">
-                <div><span class="pin-tag trigger">Pin 14 (K2)</span> <span data-i18n="k2Desc">&rarr; Original Key [2]</span></div>
-                <div style="color: var(--text-muted);" data-i18n="track2">Track 00002.mp3</div>
-              </div>
-              <div class="pin-row">
-                <div><span class="pin-tag trigger">Pin 13 (K3)</span> <span data-i18n="k3Desc">&rarr; Original Key [3]</span></div>
-                <div style="color: var(--text-muted);" data-i18n="track3">Track 00003.mp3</div>
-              </div>
-              <div class="pin-row">
-                <div><span class="pin-tag trigger">Pin 12 (K4)</span> <span data-i18n="k4Desc">&rarr; Original Key [4]</span></div>
-                <div style="color: var(--text-muted);" data-i18n="track4">Track 00004.mp3</div>
-              </div>
-              <div class="pin-row">
-                <div><span class="pin-tag trigger">Pin 11 (K5)</span> <span data-i18n="k5Desc">&rarr; Original Key [5]</span></div>
-                <div style="color: var(--text-muted);" data-i18n="track5">Track 00005.mp3</div>
+                <div><span class="pin-tag vcc">USB</span> &rarr; ESP32 board USB port</div>
+                <div style="color: var(--accent-red); font-weight: bold;">5V always on</div>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- TAB 4: PLAN DE EJECUCIÓN -->
+        <!-- TAB 4: ASSEMBLY & TESTING -->
         <div id="tab-plan" class="tab-pane">
           <h2 class="section-title">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-            <span data-i18n="planTitle">Execution Roadmap by Phases</span>
+            <span>Assembly & Testing</span>
           </h2>
-          <p class="section-subtitle" data-i18n="planSubtitle">
-            Step-by-step engineering roadmap from breadboard proof-of-concept to final telephone assembly.
+          <p class="section-subtitle">
+            From a breadboard test to the finished phone. Tick the steps as you go.
           </p>
 
           <div class="progress-container">
             <div class="progress-header">
-              <span data-i18n="progressLabel">PROJECT PROGRESS</span>
-              <span id="execution-progress-text">0% Completed</span>
+              <span>PROGRESS</span>
+              <span id="execution-progress-text">0% completed</span>
             </div>
             <div class="progress-bar-bg">
               <div id="execution-progress-bar" class="progress-bar-fill"></div>
@@ -345,33 +325,29 @@
           <!-- Phase 1 -->
           <div class="phase-accordion">
             <div class="phase-header">
-              <span data-i18n="phase1Title">Phase 1: Desktop PoC Validation</span>
-              <span class="cad-badge" data-i18n="phase1Badge">BREADBOARD</span>
+              <span>Phase 1: Breadboard test</span>
+              <span class="cad-badge">BREADBOARD</span>
             </div>
             <ul class="checklist-items">
               <li>
                 <input type="checkbox" id="step1_1" class="step-checkbox">
-                <label for="step1_1" data-i18n="step1_1">Insert MB102 module into breadboard and configure voltage jumpers to 5V.</label>
+                <label for="step1_1">Place the ESP32 dev board across the center channel of the breadboard.</label>
               </li>
               <li>
                 <input type="checkbox" id="step1_2" class="step-checkbox">
-                <label for="step1_2" data-i18n="step1_2">Place JQ6500-16P module straddling the central trough; connect VCC and GND.</label>
+                <label for="step1_2">Wire the MAX98357A: VIN to 5V, GND to GND, BCLK to GPIO 27, LRC to GPIO 26, DIN to GPIO 25. Leave GAIN and SD unconnected.</label>
               </li>
               <li>
                 <input type="checkbox" id="step1_3" class="step-checkbox">
-                <label for="step1_3" data-i18n="step1_3">Solder wire leads to the 8Ω mini speaker and connect to SPK+ and SPK- pins.</label>
+                <label for="step1_3">Connect the 8 Ω speaker to the amplifier's speaker terminals (never to GND).</label>
               </li>
               <li>
                 <input type="checkbox" id="step1_4" class="step-checkbox">
-                <label for="step1_4" data-i18n="step1_4">Insert 5 tactile pushbuttons connecting one lead to GND and the other to K1..K5.</label>
+                <label for="step1_4">Add the 10 push buttons: one leg to the key's GPIO (see Wiring), the other leg to GND.</label>
               </li>
               <li>
                 <input type="checkbox" id="step1_5" class="step-checkbox">
-                <label for="step1_5" data-i18n="step1_5">Connect JQ6500 to PC via USB; flash audio files named 00001.mp3 through 00005.mp3.</label>
-              </li>
-              <li>
-                <input type="checkbox" id="step1_6" class="step-checkbox">
-                <label for="step1_6" data-i18n="step1_6">Simulate hanging up and lifting by connecting and disconnecting the 5V power line.</label>
+                <label for="step1_5">Add the LED: GPIO 33 to a 220-330 Ω resistor to the LED anode; LED cathode to GND.</label>
               </li>
             </ul>
           </div>
@@ -379,29 +355,29 @@
           <!-- Phase 2 -->
           <div class="phase-accordion">
             <div class="phase-header">
-              <span data-i18n="phase2Title">Phase 2: Hardware Adaptation</span>
-              <span class="cad-badge" data-i18n="phase2Badge">MODDING</span>
+              <span>Phase 2: Firmware & audio</span>
+              <span class="cad-badge">FLASH</span>
             </div>
             <ul class="checklist-items">
               <li>
                 <input type="checkbox" id="step2_1" class="step-checkbox">
-                <label for="step2_1" data-i18n="step2_1">Disassemble telephone chassis and remove obsolete telecom circuit boards.</label>
+                <label for="step2_1">Install PlatformIO Core and open the <code>firmware/</code> folder.</label>
               </li>
               <li>
                 <input type="checkbox" id="step2_2" class="step-checkbox">
-                <label for="step2_2" data-i18n="step2_2">Locate Normally Open (NO) contacts on mechanical hook switch with multimeter.</label>
+                <label for="step2_2">Flash the firmware over USB: <code>pio run -t upload</code>.</label>
               </li>
               <li>
                 <input type="checkbox" id="step2_3" class="step-checkbox">
-                <label for="step2_3" data-i18n="step2_3">Isolate keypad traces and solder individual wires from keys 1-5 to K1..K5 + GND.</label>
+                <label for="step2_3">Put your clips in <code>firmware/data/</code> (<code>beep.wav</code>, <code>audio1.wav</code> ... <code>audio10.wav</code>; WAV mono 16 kHz 16-bit), or keep the placeholder tones.</label>
               </li>
               <li>
                 <input type="checkbox" id="step2_4" class="step-checkbox">
-                <label for="step2_4" data-i18n="step2_4">Install slim 8Ω mini speaker inside handset earpiece capsule, secure with foam.</label>
+                <label for="step2_4">Flash the audio: <code>pio run -t uploadfs</code>.</label>
               </li>
               <li>
                 <input type="checkbox" id="step2_5" class="step-checkbox">
-                <label for="step2_5" data-i18n="step2_5">Route speaker audio wires down through the original coiled handset cord.</label>
+                <label for="step2_5">Open <code>pio device monitor</code>: the boot chime plays and every key press is logged with its GPIO and file.</label>
               </li>
             </ul>
           </div>
@@ -409,131 +385,45 @@
           <!-- Phase 3 -->
           <div class="phase-accordion">
             <div class="phase-header">
-              <span data-i18n="phase3Title">Phase 3: Final Launch & Assembly</span>
-              <span class="cad-badge" data-i18n="phase3Badge">ASSEMBLY</span>
+              <span>Phase 3: Install in the phone case</span>
+              <span class="cad-badge">ASSEMBLY</span>
             </div>
             <ul class="checklist-items">
               <li>
                 <input type="checkbox" id="step3_1" class="step-checkbox">
-                <label for="step3_1" data-i18n="step3_1">Mount internal 5V regulator and JQ6500 module onto base plate with standoffs.</label>
+                <label for="step3_1">Open the recycled phone case and remove the old electronics.</label>
               </li>
               <li>
                 <input type="checkbox" id="step3_2" class="step-checkbox">
-                <label for="step3_2" data-i18n="step3_2">Install 5.5mm DC barrel jack on rear panel for external power adapter.</label>
+                <label for="step3_2">Fit the 10 rubber push buttons under keys 1-9 and 0; run one wire per key plus a shared GND wire.</label>
               </li>
               <li>
                 <input type="checkbox" id="step3_3" class="step-checkbox">
-                <label for="step3_3" data-i18n="step3_3">Perform complete functional test: lift -> dial tone / audio -> hang up (0µA cut).</label>
+                <label for="step3_3">Mount the ESP32 and the MAX98357A on standoffs; fit the speaker (for example in the handset earpiece) and the LED.</label>
               </li>
               <li>
                 <input type="checkbox" id="step3_4" class="step-checkbox">
-                <label for="step3_4" data-i18n="step3_4">Fasten chassis with original screws. Ready for deployment!</label>
+                <label for="step3_4">Route the USB cable through the rear panel for always-on power.</label>
+              </li>
+              <li>
+                <input type="checkbox" id="step3_5" class="step-checkbox">
+                <label for="step3_5">Final test: every key plays its clip, any key during playback stops it, the LED blinks only while playing. Close the case.</label>
               </li>
             </ul>
           </div>
         </div>
 
-        <!-- TAB 5: SOUNDBOARD TEST -->
+        <!-- TAB 5: SOUNDS -->
         <div id="tab-sound" class="tab-pane">
           <h2 class="section-title">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
-            <span data-i18n="soundTitle">Virtual Soundboard Console</span>
+            <span>Sound Test</span>
           </h2>
-          <p class="section-subtitle" data-i18n="soundSubtitle">
-            Test real-time audio playback simulating keys K1 through K5, or upload your own custom MP3 tracks.
+          <p class="section-subtitle">
+            Each key plays a generic test tone (the same tones as the firmware placeholders). Load a local audio file on any key to preview your own clip; it stays in this browser tab only.
           </p>
 
-          <div class="sound-cards-grid">
-            <!-- Key 1 -->
-            <div class="sound-card" data-key="1">
-              <div class="sound-card-left">
-                <div class="key-badge k1">1</div>
-                <div class="sound-info">
-                  <h5 data-i18n="soundTrack1Title">Track 1: Retro Chime & Greeting</h5>
-                  <p>00001.mp3 • Pin K1 &bull; <span class="custom-badge" data-key="1">Synth Retro</span></p>
-                </div>
-              </div>
-              <div class="sound-card-right">
-                <label class="btn-upload-label" title="Upload custom MP3" data-i18n-title="uploadTooltip">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                  <input type="file" accept="audio/*" class="file-input-k" data-key="1" style="display: none;">
-                </label>
-                <button class="btn-sound-play sound-play-btn" data-key="1">▶</button>
-              </div>
-            </div>
-
-            <!-- Key 2 -->
-            <div class="sound-card" data-key="2">
-              <div class="sound-card-left">
-                <div class="key-badge k2">2</div>
-                <div class="sound-info">
-                  <h5 data-i18n="soundTrack2Title">Track 2: 56k Modem Handshake</h5>
-                  <p>00002.mp3 • Pin K2 &bull; <span class="custom-badge" data-key="2">Synth Dial-up</span></p>
-                </div>
-              </div>
-              <div class="sound-card-right">
-                <label class="btn-upload-label" title="Upload custom MP3" data-i18n-title="uploadTooltip">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                  <input type="file" accept="audio/*" class="file-input-k" data-key="2" style="display: none;">
-                </label>
-                <button class="btn-sound-play sound-play-btn" data-key="2">▶</button>
-              </div>
-            </div>
-
-            <!-- Key 3 -->
-            <div class="sound-card" data-key="3">
-              <div class="sound-card-left">
-                <div class="key-badge k3">3</div>
-                <div class="sound-info">
-                  <h5 data-i18n="soundTrack3Title">Track 3: Telco SIT Error Announcement</h5>
-                  <p>00003.mp3 • Pin K3 &bull; <span class="custom-badge" data-key="3">SIT Tone</span></p>
-                </div>
-              </div>
-              <div class="sound-card-right">
-                <label class="btn-upload-label" title="Upload custom MP3" data-i18n-title="uploadTooltip">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                  <input type="file" accept="audio/*" class="file-input-k" data-key="3" style="display: none;">
-                </label>
-                <button class="btn-sound-play sound-play-btn" data-key="3">▶</button>
-              </div>
-            </div>
-
-            <!-- Key 4 -->
-            <div class="sound-card" data-key="4">
-              <div class="sound-card-left">
-                <div class="key-badge k4">4</div>
-                <div class="sound-info">
-                  <h5 data-i18n="soundTrack4Title">Track 4: Cartoon Boing FX</h5>
-                  <p>00004.mp3 • Pin K4 &bull; <span class="custom-badge" data-key="4">Cartoon FX</span></p>
-                </div>
-              </div>
-              <div class="sound-card-right">
-                <label class="btn-upload-label" title="Upload custom MP3" data-i18n-title="uploadTooltip">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                  <input type="file" accept="audio/*" class="file-input-k" data-key="4" style="display: none;">
-                </label>
-                <button class="btn-sound-play sound-play-btn" data-key="4">▶</button>
-              </div>
-            </div>
-
-            <!-- Key 5 -->
-            <div class="sound-card" data-key="5">
-              <div class="sound-card-left">
-                <div class="key-badge k5">5</div>
-                <div class="sound-info">
-                  <h5 data-i18n="soundTrack5Title">Track 5: 8-Bit Victory Fanfare</h5>
-                  <p>00005.mp3 • Pin K5 &bull; <span class="custom-badge" data-key="5">8-Bit Arp</span></p>
-                </div>
-              </div>
-              <div class="sound-card-right">
-                <label class="btn-upload-label" title="Upload custom MP3" data-i18n-title="uploadTooltip">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                  <input type="file" accept="audio/*" class="file-input-k" data-key="5" style="display: none;">
-                </label>
-                <button class="btn-sound-play sound-play-btn" data-key="5">▶</button>
-              </div>
-            </div>
-          </div>
+          <div class="sound-cards-grid" id="sound-cards"><!-- cards generated from js/hardware.js --></div>
         </div>
 
       </div>

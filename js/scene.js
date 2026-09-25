@@ -128,6 +128,20 @@ export class BlueprintScene {
     this.renderer.setSize(this.width, this.height);
   }
 
+  // Camera position for a preset view, pushed back on narrow (portrait) viewports so the
+  // whole model stays in frame. refAspect is the aspect ratio the preset was tuned for.
+  framedPosition(camPos, lookAt, refAspect = 1.3) {
+    const aspect = this.width / this.height;
+    const k = Math.max(1, refAspect / aspect);
+    return lookAt.clone().add(camPos.clone().sub(lookAt).multiplyScalar(k));
+  }
+
+  setCamera(camPos, lookAt) {
+    this.camera.position.copy(camPos);
+    this.controls.target.copy(lookAt);
+    this.controls.update();
+  }
+
   animateCameraTo(targetCamPos, targetLookAt, duration = 650) {
     const startCamPos = this.camera.position.clone();
     const startTarget = this.controls.target.clone();
